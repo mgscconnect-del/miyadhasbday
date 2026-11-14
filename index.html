@@ -5,98 +5,128 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Happy Birthday 🎂</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Caveat+Brush&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;1,500;1,700&family=DM+Sans:wght@400;500;700&family=Caveat:wght@600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-:root{--ink:#3b2a20;--red:#e5484d;--kraft:#e6d3b1;--paper:#fffaf0;--tape:#f7d86acc;--sh:3px 4px 0 #3b2a2033}
+:root{--mango:#F6B21B;--cream:#FFF6E3;--coral:#F26B5B;--ink:#1F2417;--olive:#5E6B2F;--thread:#C8372D;--paper:#FFFDF6;--sh:0 10px 24px #5e6b2f22,0 2px 0 #1f241714}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;font-family:Gaegu,'Comic Sans MS',cursive;font-size:1.2rem;color:var(--ink);min-height:100vh;overflow-x:hidden;background:var(--kraft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .3 0 0 0 0 .2 0 0 0 .2 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E")}
+figure{margin:0}
+body{margin:0;font-family:'DM Sans',system-ui,sans-serif;font-size:1rem;line-height:1.5;color:var(--ink);min-height:100vh;overflow-x:hidden;background:radial-gradient(circle at 15% 0,#ffe08a99,transparent 45%) fixed,radial-gradient(circle at 100% 100%,#f26b5b2e,transparent 45%) fixed,var(--cream) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .25 0 0 0 0 .1 0 0 0 .12 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E")}
 @keyframes draw{to{stroke-dashoffset:0}}
-@keyframes fi{to{fill-opacity:.9}}
-@keyframes inL{from{opacity:0;transform:translateX(-110vw) rotate(-25deg)}}
-@keyframes inR{from{opacity:0;transform:translateX(110vw) rotate(25deg)}}
-@keyframes turn{from{opacity:0;transform:perspective(900px) rotateY(-60deg)}}
-@keyframes hop{0%,100%{transform:translateY(0)}40%{transform:translateY(-18px)}}
-@keyframes shake{25%{transform:rotate(-14deg) scale(1.1)}75%{transform:rotate(14deg) scale(1.1)}}
-@keyframes wob{20%{transform:translateX(-12px)}40%{transform:translateX(12px)}60%{transform:translateX(-8px)}80%{transform:translateX(8px)}}
-@keyframes rise{50%{transform:translate(30px,-60vh) rotate(-20deg)}to{transform:translate(-20px,-120vh) rotate(30deg)}}
-@keyframes wave{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px) rotate(-3deg)}}
-@keyframes pulse{50%{transform:scale(1.08)}}
+@keyframes fi{to{fill-opacity:.92}}
+@keyframes up{from{opacity:0;transform:translateY(26px) rotate(var(--r,0deg))}}
+@keyframes turn{from{opacity:0;transform:translateX(18px)}}
+@keyframes grow{to{width:120px}}
+@keyframes hop{0%,100%{transform:translateY(0)}40%{transform:translateY(-14px)}}
+@keyframes shake{25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
+@keyframes wob{20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+@keyframes rise{50%{transform:translate(24px,-60vh) rotate(-20deg)}to{transform:translate(-16px,-120vh) rotate(30deg)}}
+@keyframes wave{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes pulse{50%{transform:scale(1.05)}}
 @keyframes flick{0%,100%{transform:scale(1) rotate(-4deg)}50%{transform:scale(1.15,1.3) rotate(5deg)}}
 @keyframes puff{to{transform:translateY(-14px) scale(2);opacity:0}}
-@keyframes ping{to{transform:scale(3.5);opacity:0}}
-@keyframes bob{50%{transform:translateY(-12px) rotate(var(--r))}}
-@keyframes pop{from{opacity:0;transform:scale(.7) rotate(-6deg)}}
+@keyframes ping{to{transform:scale(2.6);opacity:0}}
+@keyframes pop{from{opacity:0;transform:scale(.85)}}
+@keyframes unfold{from{opacity:0;transform:perspective(600px) rotateX(-80deg)}}
+@keyframes march{to{stroke-dashoffset:-120}}
 #bg{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
-.rise{position:absolute;bottom:-60px;opacity:.55;animation:rise linear infinite}
-main{position:relative;z-index:2;max-width:640px;margin:auto;padding:30px 16px 120px}
-#view{animation:turn .7s ease both;transform-origin:left}
-#view>*,.tl>*{animation:inL .8s cubic-bezier(.2,1.1,.3,1) backwards;animation-delay:calc(var(--i,0)*.12s)}
-#view>*:nth-child(even),.tl>*:nth-child(even){animation-name:inR}
-#view>*:nth-child(odd),.tl>*:nth-child(odd){--r:-1.2deg}#view>*:nth-child(even),.tl>*:nth-child(even){--r:1deg}
-h2{font-family:'Caveat Brush',cursive;font-weight:400;text-align:center;font-size:2.5rem;margin:.5em 0 .3em;transform:rotate(-1.5deg)}
+.rise{position:absolute;bottom:-60px;opacity:.4;animation:rise linear infinite}
+main{position:relative;z-index:2;max-width:640px;margin:auto;padding:18px 16px 120px}
+.mast{display:flex;justify-content:space-between;gap:8px;border-top:2px solid var(--ink);border-bottom:1px solid var(--ink);padding:5px 0;font:500 .68rem 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase}
+#view{animation:turn .5s ease both}
+#view>*,.tl>*,.wall .pol{animation:up .7s cubic-bezier(.2,1,.3,1) backwards;animation-delay:calc(var(--i,0)*.1s)}
+.wall .pol{animation-delay:calc(var(--k)*.1s)}
+.hd{text-align:center;margin:22px 0 26px}
+.hd small{display:block;font:500 .72rem 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--coral)}
+.hd::after{content:'';display:block;width:0;margin:12px auto 0;border-top:3px dashed var(--thread);animation:grow 1.2s ease .5s forwards}
+h2{font-family:Fraunces,Georgia,serif;font-style:italic;font-weight:700;font-size:2.4rem;line-height:1.05;margin:.1em 0;text-align:center}
 .dd{position:absolute;overflow:visible;fill:none;stroke:currentColor;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
 .dd path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.4s ease forwards;animation-delay:var(--d,0s)}
 .dd.f path{fill:currentColor;fill-opacity:0;animation:draw 1.4s ease forwards,fi .5s ease forwards;animation-delay:var(--d,0s),calc(var(--d,0s) + 1.2s)}
-.dd.und{position:static;display:block;margin:2px auto 0;width:140px;height:14px;color:var(--red)}
-.dd.corner{right:-10px;bottom:-14px;width:36px;height:36px;transform:rotate(12deg)}
-button{font:inherit;font-weight:700;background:var(--red);color:#fff;border:2.5px solid var(--ink);border-radius:255px 15px 225px 15px/15px 225px 15px 255px;padding:8px 20px;cursor:pointer;box-shadow:3px 4px 0 var(--ink);transition:transform .15s,box-shadow .15s}
-button:active{transform:translate(3px,4px);box-shadow:0 0 0 var(--ink)}
-button.alt{background:var(--paper);color:var(--ink)}
-.card{background:var(--paper);border:2px solid var(--ink);border-radius:6px 14px 8px 16px;padding:20px 16px 16px;margin:28px 0;box-shadow:var(--sh);position:relative;transform:rotate(var(--r,0deg));transition:transform .3s}
-.card:hover{transform:rotate(0) scale(1.02)}
-.card::before,.pol::before{content:'';position:absolute;top:-12px;left:50%;width:84px;height:22px;margin-left:-42px;background:var(--tape);border:1px dashed #0002;transform:rotate(-3deg)}
-.card:nth-child(even)::before{background:#f4a6bdcc;transform:rotate(4deg)}
-.pol::before{width:56px;height:18px;margin-left:-28px;top:-9px}
-.m{width:100%;border:8px solid #fff;border-bottom-width:26px;box-shadow:0 3px 8px #0003;display:block;margin:0 0 10px;transform:rotate(-1deg)}
-nav{position:fixed;bottom:calc(8px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:4px;background:var(--paper);border:2.5px solid var(--ink);border-radius:20px 8px 18px 8px;padding:5px;box-shadow:3px 4px 0 var(--ink);z-index:7;max-width:96vw;overflow-x:auto}
-nav button{background:none;color:var(--ink);box-shadow:none;border:2px solid transparent;border-radius:12px;padding:3px 7px;font-size:.85rem;display:flex;flex-direction:column;align-items:center}
-nav button b{font-size:1.45rem;font-weight:400;line-height:1.2}
-nav button.on{background:var(--tape);border-color:var(--ink);transform:rotate(-4deg) translateY(-5px)}
-.hero{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:60px 16px;position:relative}
-.hero>*:not(.float):not(.dd){position:relative;z-index:2}
-.hero h1{font-family:'Caveat Brush',cursive;font-weight:400;font-size:clamp(2.7rem,12vw,4.6rem);line-height:1.1;margin:.1em 0;color:var(--red)}
-.wave span{display:inline-block;animation:wave 1.6s ease-in-out infinite;animation-delay:calc(var(--i)*.08s)}
-.cake{animation:hop 1.6s 3.4s infinite}
-.cakesvg{width:190px;height:190px;color:var(--ink);overflow:visible}
+.dd.corner{right:-10px;bottom:-14px;width:38px;height:38px;transform:rotate(12deg)}
+button{font:inherit;font-weight:700;background:var(--mango);color:var(--ink);border:2px solid var(--ink);border-radius:999px;padding:9px 22px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);transition:transform .15s,box-shadow .15s}
+button:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+button.alt{background:var(--paper)}
+.card{background:var(--paper);border:1px solid #1f241733;border-radius:4px;padding:20px 18px 18px;margin:28px 0;box-shadow:var(--sh);position:relative;transform:rotate(var(--r,0deg));transition:transform .3s}
+.card:nth-of-type(odd){--r:-.5deg}.card:nth-of-type(even){--r:.5deg}
+.card:hover{transform:translateY(-3px)}
+.card::before,.pol::before{content:'';position:absolute;top:-11px;left:50%;width:78px;height:20px;margin-left:-39px;background:#f6b21bb8;transform:rotate(-3deg);z-index:2}
+.card:nth-of-type(even)::before{background:#f26b5bb0;transform:rotate(3deg)}
+.m{width:100%;display:block;background:#fff;padding:6px;box-shadow:0 8px 20px #1f24172e;margin:0 0 12px}
+.vf{background:#fff3d6;border:1.5px dashed var(--coral);padding:22px;text-align:center;border-radius:6px;font:600 1.4rem Caveat,cursive;margin-bottom:10px}
+nav{position:fixed;bottom:calc(8px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:2px;background:var(--paper);border:2px solid var(--ink);border-radius:999px;padding:4px;box-shadow:3px 3px 0 var(--ink);z-index:7;max-width:96vw;overflow-x:auto}
+nav button{background:none;color:var(--ink);box-shadow:none;border:0;border-radius:999px;padding:5px 9px;font-size:.78rem;display:flex;flex-direction:column;align-items:center;line-height:1.2}
+nav button i{font:normal .58rem 'DM Mono',monospace;opacity:.6}
+nav button.on{background:var(--mango)}nav button.on i{opacity:1}
+.hero{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:10px 0 40px;position:relative;gap:2px}
+.hero>*{position:relative;z-index:2}
+.cakewrap{position:relative;width:170px;margin:18px 0 6px}
+.cake{animation:hop 1.8s 3.4s infinite}
+.cakesvg{width:170px;height:170px;color:var(--ink);overflow:visible}
 .cakesvg path{fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1s ease forwards;animation-delay:calc(var(--i,0)*.25s)}
-.cakesvg .fl{fill:#ffb703;fill-opacity:0;stroke:var(--red);transform-box:fill-box;transform-origin:50% 100%;animation:draw .6s forwards,fi .4s forwards,flick .5s infinite;animation-delay:1.4s,1.8s,1.8s}
+.cakesvg .fl{fill:var(--mango);fill-opacity:0;stroke:var(--coral);transform-box:fill-box;transform-origin:50% 100%;animation:draw .6s forwards,fi .4s forwards,flick .5s infinite;animation-delay:1.4s,1.8s,1.8s}
 .cakesvg.out .fl{animation:puff 1s forwards;animation-delay:0s}
-.sub{font-size:1.5rem;margin:6px 0 22px}
-.big{font-size:1.6rem;padding:12px 32px;animation:pulse 1.6s infinite}
-.pol{background:#fff;padding:7px 7px 26px;box-shadow:var(--sh);position:relative;transform:rotate(var(--r,0deg));transition:transform .3s}
+.hero h1{font-family:Fraunces,Georgia,serif;font-style:italic;font-weight:700;font-size:clamp(2.6rem,12vw,4.2rem);line-height:1.05;margin:0}
+.hero h1.nm{color:var(--coral);font-size:clamp(2.2rem,10vw,3.4rem)}
+.wave span{display:inline-block;animation:wave 2s ease-in-out infinite;animation-delay:calc(var(--i)*.1s)}
+.sub{font:500 .8rem 'DM Mono',monospace;letter-spacing:.14em;text-transform:uppercase;margin:12px 0 18px}
+.big{font-size:1.25rem;padding:13px 32px;animation:pulse 1.8s infinite}
+.strip{display:flex;justify-content:center;margin:34px 0 0}
+.strip .pol{width:21vw;max-width:96px;margin:0 -5px;padding:4px 4px 14px;animation:up .8s cubic-bezier(.2,1,.3,1) backwards;animation-delay:calc(1.2s + var(--k)*.15s)}
+.strip .pol::before{width:34px;height:12px;margin-left:-17px;top:-6px}
+.pol{background:#fff;padding:8px 8px 12px;box-shadow:var(--sh);position:relative;transform:rotate(var(--r,0deg));transition:transform .3s}
 .pol img{width:100%;display:block}
-.pol span{position:absolute;bottom:3px;left:0;right:0;text-align:center;font-size:1rem}
-.float{position:absolute;width:108px;z-index:1;animation:var(--a,inL) 1s cubic-bezier(.2,1.1,.3,1) backwards,bob 5s 1s ease-in-out infinite}
+.pol figcaption{display:block;padding-top:8px;font:500 .66rem 'DM Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--coral)}
+.pol figcaption b{display:block;font:600 1.3rem/1.1 Caveat,cursive;letter-spacing:0;text-transform:none;color:var(--ink)}
 .wall{columns:2;column-gap:16px}
-.wall .pol{break-inside:avoid;margin-bottom:22px;cursor:zoom-in;animation:inL .9s cubic-bezier(.2,1.1,.3,1) backwards;animation-delay:calc(var(--k)*.12s)}
-.wall .pol:nth-child(even){animation-name:inR}
-.wall .pol:hover{transform:rotate(0) scale(1.07);z-index:2}
-.circ{width:84px;height:84px;object-fit:cover;display:block;margin:0 auto 8px;border:4px solid #fff;box-shadow:var(--sh);transform:rotate(-4deg);animation:pop .5s both}
-.letter{background:linear-gradient(90deg,transparent 38px,#e5484d77 38px 40px,transparent 40px),repeating-linear-gradient(#fffdf5 0 31px,#9ec9e8 32px);font-family:Caveat,cursive;font-size:1.5rem;line-height:32px;border-radius:4px;padding:12px 14px 12px 52px;white-space:pre-wrap}
+.wall .pol{break-inside:avoid;margin-bottom:22px;cursor:zoom-in}
+.wall .pol:first-child{column-span:all}
+.wall .pol:first-child img{max-height:62vh;object-fit:cover;object-position:50% 30%}
+.wall .pol:hover{transform:rotate(0) scale(1.03);z-index:2}
+.circ{width:88px;height:88px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 10px;border:3px solid var(--mango);box-shadow:0 0 0 3px var(--paper),0 6px 14px #0003;animation:pop .5s both}
+.seal{position:absolute;right:14px;top:-16px;width:40px;height:40px;border-radius:50%;background:var(--thread);color:#fff;display:grid;place-items:center;box-shadow:0 3px 6px #0004;z-index:3}
+.dear{font:600 1.9rem Caveat,cursive;color:var(--coral);margin:4px 0}
+.letter{background:repeating-linear-gradient(transparent 0 31px,#1f241718 32px);font:600 1.5rem/32px Caveat,cursive;padding:4px 6px;white-space:pre-wrap}
 .letter.done::after{display:none}
-.letter::after{content:'';display:inline-block;width:2px;height:1.2em;background:var(--red);vertical-align:middle;animation:pulse .8s infinite}
-.tl{border-left:3px dashed var(--ink);margin-left:14px;padding-left:14px}
-.tm::after{content:'♥';position:absolute;left:-36px;top:20px;color:var(--red);font-size:1.6rem;background:var(--kraft);border-radius:50%;animation:pulse 1.4s infinite}
-#jarE{font-size:6rem;display:inline-block;cursor:pointer;animation:hop 2.5s infinite}
+.letter::after{content:'';display:inline-block;width:2px;height:1.2em;background:var(--coral);vertical-align:middle;animation:pulse .8s infinite}
+.stks{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:-8px 0 22px}
+.stk{font:500 .78rem 'DM Mono',monospace;padding:6px 12px;border:1.5px solid var(--ink);border-radius:999px;background:var(--paper);transform:rotate(-1.5deg)}
+.stk[data-egg]{background:var(--mango);cursor:pointer}
+.tl{counter-reset:s;margin-left:16px;padding-left:20px;border-left:3px dashed var(--thread)}
+.tm::after{counter-increment:s;content:counter(s);position:absolute;left:-46px;top:18px;width:28px;height:28px;border-radius:50%;background:var(--mango);border:2px solid var(--ink);font:700 .8rem 'DM Mono',monospace;display:grid;place-items:center}
+.tm b{font:italic 700 1.35rem Fraunces,Georgia,serif}
+.tm small{display:inline-block;font:500 .7rem 'DM Mono',monospace;border:1.5px solid var(--thread);color:var(--thread);padding:1px 6px;border-radius:3px;transform:rotate(-3deg);margin-left:6px}
+.tm small:empty{display:none}
+#jarE{display:inline-block;cursor:pointer;animation:hop 2.6s infinite}
 #jarE.shake{animation:shake .5s}
-.slip{background:#fff3a8;font-family:Caveat,cursive;font-size:1.8rem;padding:14px;margin:10px 0;transform:rotate(-2deg);box-shadow:var(--sh);animation:pop .6s both}
-.bar{height:16px;border:2.5px solid var(--ink);border-radius:10px 4px 10px 4px;overflow:hidden;margin-bottom:10px;background:#fff}
-.bar i{display:block;height:100%;background:repeating-linear-gradient(45deg,var(--red) 0 8px,#ff8a8e 8px 16px);transition:width .5s}
-.opt{display:block;width:100%;margin:12px 0;text-align:left;background:#fff3a8;color:var(--ink);border:1.5px solid #3b2a2055;border-radius:3px;box-shadow:var(--sh);font-size:1.25rem}
-.opt.right{background:#c6efb8}.opt.right::after{content:' ✔'}
-.opt.wrong{background:#ffc9c9}.opt.wrong::after{content:' ✘'}
+.slip{position:relative;background:var(--paper);border:1px solid #1f241733;font:600 1.8rem/1.2 Caveat,cursive;padding:18px 16px;margin:12px 0;transform-origin:top;box-shadow:var(--sh);animation:unfold .6s ease both}
+.slip::after{content:'♥';position:absolute;right:-8px;bottom:-12px;width:28px;height:28px;border-radius:50%;background:var(--thread);color:#fff;font:1rem/28px sans-serif}
+.ch{display:block;margin-bottom:8px;font:500 .7rem 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--coral)}
+.reel{box-shadow:0 0 0 1px #1f241722,0 18px 40px #f6b21b55}
+.bar{height:6px;background:#1f241722;border-radius:6px;overflow:hidden;margin-bottom:12px}
+.bar i{display:block;height:100%;background:var(--thread);transition:width .5s}
+.opt{display:block;width:100%;margin:10px 0;text-align:left;background:var(--paper);font-weight:500;border-radius:14px;box-shadow:none;font-size:1.05rem}
+.opt:active{transform:scale(.98)}
+.opt.right{background:#e2f0b8;border-color:var(--olive)}.opt.right::after{content:' ✔'}
+.opt.wrong{background:#ffd9d2;border-color:var(--coral)}.opt.wrong::after{content:' ✘'}
+.badge{text-align:center;font:500 .8rem 'DM Mono',monospace;letter-spacing:.15em;text-transform:uppercase;color:var(--thread);margin:0}
 .wob{animation:wob .5s}
-.map{position:relative;height:360px;border:2.5px solid var(--ink);border-radius:8px 16px 6px 14px;box-shadow:var(--sh);background:radial-gradient(#3b2a2022 1.5px,transparent 2px) 0 0/22px 22px,url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M8 88C25 60 15 40 45 45S75 30 92 10' fill='none' stroke='%23e5484d' stroke-width='1' stroke-dasharray='3 3'/%3E%3C/svg%3E") 0 0/100% 100%,#f3e2bd}
-.pin{position:absolute;transform:translate(-50%,-100%);font-size:2.3rem;background:none;box-shadow:none;border:0;padding:0}
-.pin span{display:block;animation:hop 1.6s infinite}
-.pin::after{content:'';position:absolute;left:50%;bottom:-3px;width:14px;height:6px;margin-left:-7px;border-radius:50%;border:2px solid var(--red);animation:ping 1.6s infinite}
-.add{background:#fff8;border:2.5px dashed var(--ink);border-radius:10px;padding:14px;display:grid;gap:10px;margin:24px 0}
-input,textarea{padding:9px;border-radius:6px;border:2px solid var(--ink);font:inherit;width:100%;background:#fff;color:var(--ink)}
-#mute{position:fixed;top:calc(10px + env(safe-area-inset-top));right:10px;z-index:8;padding:4px 10px;font-size:1.1rem}
-#lb{position:fixed;inset:0;background:#000d;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}#lb img{max-width:100%;max-height:100%;border:10px solid #fff;animation:pop .4s both}
-.cp{position:absolute;bottom:28px;left:0;right:0;text-align:center;color:#fff;font-size:1.4rem}
-.small{font-size:1rem;text-align:center;opacity:.7}
+.map{position:relative;height:380px;border:1.5px solid var(--ink);border-radius:6px;overflow:hidden;box-shadow:var(--sh);background:radial-gradient(circle at 20% 15%,#fff3c4,transparent 45%),repeating-linear-gradient(0deg,transparent 0 23px,#5e6b2f14 24px),repeating-linear-gradient(90deg,transparent 0 23px,#5e6b2f14 24px),#fbeab8}
+.map::after{content:'🧭';position:absolute;right:10px;bottom:6px;font-size:2rem;opacity:.8;pointer-events:none}
+.route{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.route path{fill:none;stroke:var(--thread);stroke-width:2.5;stroke-dasharray:6 6;vector-effect:non-scaling-stroke;animation:march 6s linear infinite}
+.pin{position:absolute;transform:translate(-50%,-50%);width:32px;height:32px;padding:0;border:0;background:none;box-shadow:none}
+.pin span{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--coral);color:#fff;font:700 .9rem 'DM Mono',monospace;border:2.5px solid var(--ink);animation:hop 1.8s infinite}
+.pin::after{content:'';position:absolute;inset:0;border-radius:50%;border:2px solid var(--coral);animation:ping 1.8s infinite}
+.pin.tmp{font-size:1.8rem;width:auto;height:auto}
+.add{background:#fff8;border:2px dashed var(--ink);border-radius:10px;padding:14px;display:grid;gap:10px;margin:24px 0}
+input,textarea{padding:10px;border-radius:8px;border:1.5px solid var(--ink);font:inherit;width:100%;background:#fff;color:var(--ink)}
+#mute{position:fixed;top:calc(52px + env(safe-area-inset-top));right:12px;z-index:8;width:38px;height:38px;padding:0;border-radius:50%;background:var(--paper);box-shadow:none;font-size:1.05rem}
+#lb{position:fixed;inset:0;background:#1f2417ee;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+#lb img{max-width:100%;max-height:82%;border:10px solid #fff;animation:pop .4s both}
+.cp{position:absolute;bottom:26px;left:0;right:0;text-align:center;color:#fff;font:600 1.5rem Caveat,cursive}
+.lbn{position:absolute;left:8px;top:50%;width:42px;height:42px;padding:0;font-size:1.6rem;line-height:1}.lbn.r{left:auto;right:8px}
+.small{font-size:.85rem;text-align:center;opacity:.7}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-iteration-count:1!important}}
 </style>
 </head>
@@ -112,7 +142,7 @@ const $ = s => document.querySelector(s), app = $('#app'), rand = (a, b) => a + 
 let admin = false, S = {}, tab = 'note';
 const PH = [1,2,3,4,5,6,7,8].map(n => `photos/p${n}.jpg`);
 const CAP = ['Fur-jacket season 🧥','Elevator selfie 🛗','Walk by IKEA 🤍','Dinner date 🍽️','Claw Culture 🧸','Lipstick check 💄','Plant whisperer 🌿','Red looks good ❤️'];
-const E = ['💖','⭐','✨','🌸','🎀','🎉','🧡','🌼'];
+const E = ['🥭','💛','✨','🌿','🎉','🧡','⭐','🍋'];
 let muted = false, AC, BG;
 const ctx = () => { if (muted) return null; AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); return AC; };
 function snd(f, d = .15, type = 'sine', v = .15, when = 0, to){
@@ -147,7 +177,8 @@ function bday(){
 }
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const isVid = u => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u || '');
-const media = u => !u ? '' : isVid(u) ? `<video class="m" controls playsinline preload="metadata" src="${u}"></video>` : `<img class="m" loading="lazy" src="${u}">`;
+const bad = "this.replaceWith(Object.assign(document.createElement('div'),{className:'vf',textContent:'This one couldn’t load right now. Try again in a moment.'}))";
+const media = u => !u ? '' : isVid(u) ? `<video class="m" controls playsinline preload="metadata" src="${u}#t=0.1" onerror="${bad}"></video>` : `<img class="m" loading="lazy" src="${u}" onerror="${bad}">`;
 const wave = s => [...s].map((c, i) => `<span style="--i:${i}">${c === ' ' ? '&nbsp;' : esc(c)}</span>`).join('');
 
 const F = {
@@ -157,7 +188,7 @@ const F = {
   places:   [['name','Place name'],['story','Story'],['url','Photo','file'],['x','','hidden'],['y','','hidden']],
   videos:   [['title','Title'],['url','Video','file']]
 };
-const TABS = [['note','💌','Note'],['gallery','🖼️','Photos'],['memories','📸','Story'],['reasons','🫙','Jar'],['quiz','🎮','Quiz'],['places','🗺️','Map'],['videos','🎬','Films']];
+const TABS = [['note','01','Note'],['gallery','02','Photos'],['memories','03','Story'],['reasons','04','Jar'],['quiz','05','Quiz'],['places','06','Map'],['videos','07','Video']];
 const rows = async t => (await sb.from(t).select('*').order('created_at')).data || [];
 async function upload(file){
   const name = crypto.randomUUID() + '.' + (file.name.split('.').pop() || 'bin');
@@ -166,7 +197,10 @@ async function upload(file){
   return sb.storage.from('media').getPublicUrl(name).data.publicUrl;
 }
 
-const DD = { heart:'M50 88C8 58 4 26 28 16c12-5 22 4 22 12 0-8 10-17 22-12 24 10 20 42-22 72z', star:'M50 6l11 33h35L68 59l11 33-29-20-29 20 11-33L4 39h35z', swirl:'M50 50m-3 0a3 3 0 1 1 6 0a10 10 0 1 1-20 0a17 17 0 1 1 34 0a24 24 0 1 1-48 0', arrow:'M10 70C30 20 60 20 85 55M85 55l-4-20M85 55l-20 4' };
+const DD = { mango:'M52 14C74 8 92 28 88 52C84 78 62 92 40 84C18 76 10 48 24 28C32 18 42 16 52 14zM52 14c-2-9 6-13 16-8', olive:'M8 92C30 72 55 45 92 12M34 70q-12-4-14-16q12 2 14 16M52 52q-12-4-14-16q12 2 14 16M70 34q-12-4-14-16q12 2 14 16M45 62q10 4 20 0q-8-10-20 0M64 44q10 4 20 0q-8-10-20 0', spark:'M50 4Q56 44 96 50Q56 56 50 96Q44 56 4 50Q44 44 50 4z' };
+const ORD = [4,2,7,0,5,3,6,1];
+const head = (n, k, t) => `<header class="hd"><small>No. ${n} — ${k}</small><h2>${t}</h2></header>`;
+const JAR = '<svg viewBox="0 0 100 120" width="130" height="156"><rect x="26" y="4" width="48" height="13" rx="4" fill="#C8372D"/><path d="M30 17h40l5 13c4 9 7 20 7 42v26c0 10-6 17-17 17H35c-11 0-17-7-17-17V72c0-22 3-33 7-42z" fill="#fffdf6aa" stroke="#1F2417" stroke-width="3"/><rect x="28" y="70" width="26" height="10" rx="2" fill="#F6B21B" transform="rotate(-16 41 75)"/><rect x="46" y="84" width="28" height="10" rx="2" fill="#F26B5B" transform="rotate(12 60 89)"/><rect x="30" y="96" width="24" height="10" rx="2" fill="#9AA85A" transform="rotate(-8 42 101)"/><rect x="50" y="62" width="22" height="9" rx="2" fill="#fff" stroke="#1F2417" stroke-width="1.5" transform="rotate(20 61 66)"/></svg>';
 const dd = (n, c, st = '', d = 0, f = '') => `<svg class="dd ${f}" viewBox="0 0 100 100" style="color:${c};--d:${d}s;${st}"><path pathLength="1" d="${DD[n]}"/></svg>`;
 const UND = '<svg class="dd und" viewBox="0 0 100 20" style="--d:.5s"><path pathLength="1" d="M2 12Q12 2 22 12T42 12 62 12 82 12 98 10"/></svg>';
 /* ---------- Animations ---------- */
@@ -190,7 +224,7 @@ function burst(x = innerWidth / 2, y = innerHeight / 2, n = 44){
 const confetti = () => { burst(); setTimeout(() => burst(innerWidth * .2, innerHeight * .4), 300); setTimeout(() => burst(innerWidth * .8, innerHeight * .4), 600); };
 (function(){
   const bg = document.createElement('div'); bg.id = 'bg';
-  for (let i = 0; i < 20; i++){ const s = document.createElement('span'); s.className = 'rise'; s.textContent = '♥★✿✦♡☆'[i % 6]; s.style.cssText = `color:${['#e5484d','#f2a900','#4fb3a0','#f4a6bd'][i % 4]};left:${rand(0, 95)}%;font-size:${rand(18, 46)}px;animation-duration:${rand(11, 22)}s;animation-delay:-${rand(0, 20)}s`; bg.appendChild(s); }
+  for (let i = 0; i < 20; i++){ const s = document.createElement('span'); s.className = 'rise'; s.textContent = '✦•✧•✦'[i % 5]; s.style.cssText = `color:${['#F6B21B','#F26B5B','#5E6B2F'][i % 3]};left:${rand(0, 95)}%;font-size:${rand(18, 46)}px;animation-duration:${rand(11, 22)}s;animation-delay:-${rand(0, 20)}s`; bg.appendChild(s); }
   document.body.prepend(bg);
   const m = document.createElement('button'); m.id = 'mute'; m.className = 'alt'; m.textContent = '🔊';
   m.onclick = ev => { ev.stopPropagation(); muted = !muted; m.textContent = muted ? '🔇' : '🔊'; if (BG) BG.muted = muted; if (!muted) SFX.chime(); };
@@ -209,36 +243,36 @@ function addForm(t){
 const ctl = (t, id) => admin ? `<p><button class="alt" data-edit="${t}" data-id="${id}">✏️ Edit</button> <button class="alt" data-del="${t}" data-id="${id}">🗑️ Delete</button></p>` : '';
 const V = {
   async gallery(){
-    const R = [-3,2,-2,3,-1,2,-3,1];
-    return `<h2>Polaroid wall 🖼️</h2><div class="wall">${PH.map((p, i) => `<div class="pol" style="--r:${R[i]}deg;--k:${i}" data-lb="${i}"><img src="${p}" loading="lazy"><span>${CAP[i]}</span></div>`).join('')}</div>`;
+    const R = [-1.5,1,-1,1.5,-1,1,-1.5,1];
+    return `${head('02', 'The Lookbook', 'Photos')}<div class="wall">${ORD.map((p, k) => `<figure class="pol" style="--r:${R[k]}deg;--k:${k}" data-lb="${p}"><img src="${PH[p]}" loading="lazy" alt="${esc(CAP[p])}"><figcaption>Look ${String(k + 1).padStart(2, '0')}<b>${CAP[p]}</b></figcaption></figure>`).join('')}</div>`;
   },
   async note(){
     const n = S.note || 'Write your heartfelt message here (log in as admin and tap Edit).';
-    return `<div class="card"><div class="pol" style="--r:-3deg;max-width:230px;margin:6px auto 16px"><img src="${PH[4]}"><span>${CAP[4]}</span></div><h2>A note for you 💌</h2><div class="letter">${esc(n)}</div>
+    return `${head('01', 'The Note', 'A note for you')}<div class="card"><div class="seal">♥</div><figure class="pol" style="--r:-3deg;max-width:230px;margin:6px auto 16px"><img src="${PH[4]}"><figcaption><b>${CAP[4]}</b></figcaption></figure><div class="dear">Dear ${esc(S.name || 'you')},</div><div class="letter">${esc(n)}</div>
     ${admin ? `<p><button class="alt" data-set="note">✏️ Edit note</button> <button class="alt" data-set="name">Her name</button> <label class="alt" style="padding:10px 16px;border-radius:20px;background:#fff;display:inline-block">🎵 Song <input type="file" accept="audio/*" data-song hidden></label></p>` : ''}</div>`;
   },
   async memories(){
     const r = await rows('memories'); r.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-    return `<h2>Our story 📸</h2><div class="tl">` + r.map(m => `<div class="card tm">${media(m.url)}<b>${esc(m.title)}</b> <small>${m.date || ''}</small><p>${esc(m.caption)}</p>${ctl('memories', m.id)}</div>`).join('') + `</div>` + addForm('memories');
+    return `${head('03', 'The Story', 'Our story, stop by stop')}<div class="stks"><span class="stk" data-egg="crown">👑 Clash Royale nights</span><span class="stk">⭐ The Odyssey, together</span></div><div class="tl">` + r.map(m => `<div class="card tm">${media(m.url)}<b>${esc(m.title)}</b> <small>${m.date || ''}</small><p>${esc(m.caption)}</p>${ctl('memories', m.id)}</div>`).join('') + `</div>` + addForm('memories');
   },
   async reasons(){
     const r = await rows('reasons'); S._r = r; S._seen = S._seen || [];
-    return `<h2>Reasons I love you 🫙</h2><div class="card" style="text-align:center"><span id="jarE">🫙</span><div id="jar"><p>Tap the jar 👇</p></div>
+    return `${head('04', 'The Jar', 'Reasons I love you')}<div class="card" style="text-align:center"><div id="jarE">${JAR}</div><div id="jar"><p>Tap the jar 👇</p></div>
       <button class="big" id="pick">Open a reason 💌</button><p><small id="cnt">${S._seen.length}/${r.length} opened</small></p></div>` +
       (admin ? r.map(x => `<div class="card">${esc(x.text)}${ctl('reasons', x.id)}</div>`).join('') : '') + addForm('reasons');
   },
   async quiz(){
     const r = await rows('quiz'); S._q = r; S._i = 0; S._s = 0;
-    return `<h2>How well do you know us? 🎮</h2><div class="card" id="qbox"></div>` + (admin ? r.map(x => `<div class="card">${esc(x.question)}${ctl('quiz', x.id)}</div>`).join('') : '') + addForm('quiz');
+    return `${head('05', 'The Quiz', 'How well do you know us?')}<div class="card" id="qbox"></div>` + (admin ? r.map(x => `<div class="card">${esc(x.question)}${ctl('quiz', x.id)}</div>`).join('') : '') + addForm('quiz');
   },
   async places(){
     const r = await rows('places'); S._p = r;
-    return `<h2>Our map 🗺️</h2><div class="map" id="map">${r.map(p => `<button class="pin" data-pin="${p.id}" style="left:${p.x}%;top:${p.y}%"><span>📍</span></button>`).join('')}</div><div id="pinbox"></div>` +
+    return `${head('06', 'The Voyage', 'Our map')}<div class="map" id="map">${r.length > 1 ? `<svg class="route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M${r.map(p => p.x + ' ' + p.y).join(' L')}"/></svg>` : ''}${r.map((p, i) => `<button class="pin" data-pin="${p.id}" style="left:${p.x}%;top:${p.y}%"><span>${i + 1}</span></button>`).join('')}</div><div id="pinbox"></div>` +
       (admin ? r.map(x => `<div class="card">${esc(x.name)}${ctl('places', x.id)}</div>`).join('') : '') + addForm('places');
   },
   async videos(){
     const r = await rows('videos');
-    return `<h2>Videos for you 🎬</h2>` + r.map(v => `<div class="card">${media(v.url)}<b>${esc(v.title)}</b>${ctl('videos', v.id)}</div>`).join('') + addForm('videos');
+    return head('07', 'The Reveal', 'Videos for you') + (r.length ? r.map((v, i) => `<div class="card reel"><small class="ch">Reel ${i + 1}</small>${media(v.url)}<b>${esc(v.title)}</b>${ctl('videos', v.id)}</div>`).join('') : '<div class="card"><div class="vf">Something special is still being edited. Check back soon.</div></div>') + addForm('videos');
   }
 };
 function showQ(){
@@ -249,7 +283,7 @@ function showQ(){
     const p = S._s / S._q.length, rimg = PH[p === 1 ? 4 : p >= .6 ? 2 : p >= .3 ? 3 : 5];
     const msg = p === 1 ? "Perfect score?! You know me better than I know myself. Marry me. 💍" : p >= .6 ? "Pretty good! You clearly pay attention… most of the time. 😏" : p >= .3 ? "Hmm. Suspicious. Did you even go on those dates? 🤨💕" : "ZERO?! You're lucky you're cute. Forgiven. 😘";
     if (p >= .6){ confetti(); SFX.fanfare(); }
-    return b.innerHTML = `<img class="circ" style="width:140px;height:140px" src="${rimg}"><h2>${S._s}/${S._q.length}</h2><p style="text-align:center">${msg}</p><p style="text-align:center"><button onclick="V.quiz().then(h=>{$('#view').innerHTML=h;showQ()})">Play again 🔁</button></p>`;
+    return b.innerHTML = `<img class="circ" style="width:140px;height:140px" src="${rimg}">${p === 1 ? '<p class="badge">👑 Three crowns</p>' : ''}<h2>${S._s}/${S._q.length}</h2><p style="text-align:center">${msg}</p><p style="text-align:center"><button onclick="V.quiz().then(h=>{$('#view').innerHTML=h;showQ()})">Play again 🔁</button></p>`;
   }
   const o = (q.options || '').split('|').map(s => s.trim());
   b.innerHTML = `<div class="bar"><i style="width:${S._i / S._q.length * 100}%"></i></div><img class="circ" src="${PH[S._i % PH.length]}"><small>Question ${S._i + 1}/${S._q.length}</small><h3>${esc(q.question)}</h3>` + o.map((t, i) => `<button class="opt" data-a="${i + 1}">${esc(t)}</button>`).join('') + '<p id="fb"></p>';
@@ -264,31 +298,33 @@ function typeNote(){
 /* ---------- Shell ---------- */
 async function render(){
   const h = await V[tab]();
-  app.innerHTML = `<div id="view">${h}</div><p class="small">${admin ? '🔧 Admin mode · <a href="#" data-logout>log out</a>' : 'made with love 💖'}</p>
-    <nav>${TABS.map(([k, e, l]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}"><b>${e}</b>${l}</button>`).join('')}</nav>`;
+  app.innerHTML = `<div class="mast"><b>${esc(S.name || 'Miyadha')}</b><span>The Birthday Issue</span><span>Nº ${TABS.findIndex(x => x[0] === tab) + 1}</span></div><div id="view">${h}</div><p class="small">${admin ? '🔧 Admin mode · <a href="#" data-logout>log out</a>' : 'made with love 💖'}</p>
+    <nav>${TABS.map(([k, e, l]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}"><i>${e}</i>${l}</button>`).join('')}</nav>`;
   [...$('#view').children].forEach((c, i) => c.style.setProperty('--i', i));
-  document.querySelectorAll('#view h2').forEach(h => h.insertAdjacentHTML('beforeend', UND));
-  document.querySelectorAll('#view .card').forEach((c, i) => c.insertAdjacentHTML('beforeend', dd(['heart','star','swirl'][i % 3], ['#e5484d','#f2a900','#4fb3a0'][i % 3], '', 1 + i * .15, i % 3 < 2 ? 'f corner' : 'corner')));
+  document.querySelectorAll('#view .card').forEach((c, i) => c.insertAdjacentHTML('beforeend', dd(['mango','olive','spark'][i % 3], ['#F6B21B','#5E6B2F','#F26B5B'][i % 3], '', 1 + i * .15, i % 3 === 1 ? 'corner' : 'f corner')));
   if (tab === 'quiz') showQ();
   if (tab === 'note') typeNote();
   scrollTo({ top: 0, behavior: 'smooth' });
 }
 function welcome(){
-  const fl = [[4,'top:7%;left:3%;--r:-8deg'],[2,'top:9%;right:3%;--r:7deg;--a:inR'],[7,'bottom:7%;left:4%;--r:6deg'],[0,'bottom:5%;right:3%;--r:-6deg;--a:inR']];
-  const ds = [['heart','#e5484d','top:27%;left:26%;width:40px',2.6,'f'],['star','#f2a900','top:22%;right:22%;width:38px',3,'f'],['swirl','#4fb3a0','bottom:27%;left:12%;width:54px',3.4],['heart','#f4a6bd','bottom:31%;right:10%;width:36px',3.7,'f'],['arrow','#3b2a20','bottom:15%;left:32%;width:58px',4]];
+  const ord = [4,2,7,0], rot = [-6,3,-3,5];
+  const ds = [['mango','#F6B21B','left:-18px;top:4px;width:46px',2.4,'f'],['spark','#F26B5B','right:-8px;top:-2px;width:34px',2.8,'f'],['olive','#5E6B2F','right:-34px;bottom:8px;width:58px',3.2]];
   const cake = ['M14 88h72','M18 88V64h64v24','M28 64V44h44v20','M18 64q8 9 16 0t16 0 16 0 16 0','M38 44V30M50 44V28M62 44V30'], fire = ['M38 30q-6-8 0-15q6 7 0 15z','M50 28q-6-8 0-15q6 7 0 15z','M62 30q-6-8 0-15q6 7 0 15z'];
-  app.innerHTML = `<div class="hero">${fl.map(([i, st]) => `<div class="float pol" style="${st}"><img src="${PH[i]}"></div>`).join('')}${ds.map(a => dd(...a)).join('')}
-    <div class="cake"><svg class="cakesvg" viewBox="0 0 100 100">${cake.map((d, i) => `<path style="--i:${i}" d="${d}"/>`).join('')}${fire.map(d => `<path class="fl" d="${d}"/>`).join('')}</svg></div>
-    <h1 class="wave">${wave('Happy Birthday')}</h1>${S.name ? `<h1 class="wave" style="font-size:clamp(2.2rem,10vw,3.6rem);color:#3b2a20">${wave(S.name)} ♥</h1>` : ''}${UND.replace('--d:.5s', '--d:2s')}
-    <p class="sub">Your birthday surprise is ready 🎁</p><button class="big" id="start">Blow the candles 🕯️</button></div>`;
+  app.innerHTML = `<div class="hero"><div class="mast" style="width:100%"><b>${esc(S.name || 'Miyadha')}</b><span>The Birthday Issue</span><span>Nº 01</span></div>
+    <div class="cakewrap">${ds.map(a => dd(...a)).join('')}<div class="cake"><svg class="cakesvg" viewBox="0 0 100 100">${cake.map((d, i) => `<path style="--i:${i}" d="${d}"/>`).join('')}${fire.map(d => `<path class="fl" d="${d}"/>`).join('')}</svg></div></div>
+    <h1 class="wave">${wave('Happy Birthday')}</h1>${S.name ? `<h1 class="nm">${esc(S.name)}</h1>` : ''}
+    <p class="sub">Your birthday surprise is ready 🎁</p><button class="big" id="start">Blow the candles 🕯️</button>
+    <div class="strip">${ord.map((i, k) => `<div class="pol" style="--r:${rot[k]}deg;--k:${k}"><img src="${PH[i]}"></div>`).join('')}</div></div>`;
 }
 
 /* ---------- Events ---------- */
 document.addEventListener('click', async e => {
-  const t = e.target.closest('button,a,div.map,[data-lb],#lb,#jarE'); if (!t) return;
+  const t = e.target.closest('button,a,div.map,[data-lb],[data-egg],#lb,#jarE'); if (!t) return;
   const d = t.dataset;
   if (t.id === 'lb') return t.remove();
-  if (d.lb !== undefined) return document.body.insertAdjacentHTML('beforeend', `<div id="lb"><img src="${PH[d.lb]}"><div class="cp">${CAP[d.lb]}</div></div>`);
+  if (d.egg){ const r = t.getBoundingClientRect(); for (let i = 0; i < 6; i++) setTimeout(() => sparkle(r.x + r.width / 2 + rand(-40, 40), r.y, '👑'), i * 90); SFX.ding(); t.textContent = '👑👑👑 three crowns'; setTimeout(() => t.textContent = '👑 Clash Royale nights', 2200); return; }
+  if (d.lb !== undefined){ S._lb = +d.lb; return document.body.insertAdjacentHTML('beforeend', `<div id="lb"><button class="lbn" data-lbn="-1">‹</button><img src="${PH[S._lb]}"><div class="cp">${CAP[S._lb]}</div><button class="lbn r" data-lbn="1">›</button></div>`); }
+  if (d.lbn !== undefined){ S._lb = ORD[(ORD.indexOf(S._lb) + +d.lbn + ORD.length) % ORD.length]; $('#lb img').src = PH[S._lb]; $('#lb .cp').textContent = CAP[S._lb]; return SFX.flip(); }
   if (t.id === 'start'){
     t.disabled = true; t.textContent = '🎶'; document.querySelectorAll('.cakesvg').forEach(c => c.classList.add('out')); SFX.blow();
     if (S.song){ BG = new Audio(S.song); BG.loop = true; BG.volume = 0; BG.muted = muted; BG.play().catch(() => {}); let v = 0; setTimeout(() => { const iv = setInterval(() => { BG.volume = Math.min(1, v += .05); if (v >= 1) clearInterval(iv); }, 150); }, 9000); }
