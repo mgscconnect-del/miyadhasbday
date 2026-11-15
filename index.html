@@ -260,6 +260,9 @@ input,textarea{padding:11px;border-radius:14px;border:2px solid #ffc2da;font:inh
 .lbn{position:absolute;left:8px;top:50%;width:44px;height:44px;padding:0;font-size:1.6rem;line-height:1}.lbn.r{left:auto;right:8px}
 .small{font-size:.85rem;text-align:center;opacity:.75}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-iteration-count:1!important}}
+
+.runner-progress{height:8px;background:#f1cbd9;border-radius:9px;margin:0 6px 9px;overflow:hidden}.runner-progress span{display:block;width:0;height:100%;background:linear-gradient(90deg,#fb5790,#ffb84d);transition:width .15s linear}#runnerCanvas{width:100%;max-width:640px;height:auto;aspect-ratio:16/9;display:block;margin:auto;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;cursor:pointer}#runnerPause,#runnerMute{min-width:74px}
+.story-admin{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:16px 0}.story-upload{display:inline-flex;align-items:center;cursor:pointer}.story-upload{padding:7px 10px;background:#fff;border-radius:14px;color:#7e4561;font-size:.8rem}.story-upload input{display:none}.chapter-photo{margin:16px auto;text-align:center}.chapter-photo img{max-width:100%;max-height:340px;border-radius:14px}.story-photo-caption{font-size:.9rem;color:#98507a;margin-top:6px}.extra-photo{position:relative}.extra-photo button{display:block}.politics-art{min-height:150px;display:flex;justify-content:center;align-items:center;gap:16px;background:linear-gradient(135deg,#ffe6b8,#fad7e8,#d9e9ff);border-radius:18px}.politics-art .ballot{width:42px;height:50px;background:#fff;border:3px solid #c77c9c;border-radius:8px;display:grid;place-items:center;color:#fa5795;font-size:22px;box-shadow:0 5px 0 #dfb0c1}.politics-art .talk-bubble{padding:10px 14px;background:#fff;border-radius:16px;color:#71435d;font-size:.8rem}.politics-hearts{color:#ee4f90}
 </style>
 </head>
 <body>
@@ -336,6 +339,8 @@ async function upload(file){
   return sb.storage.from('media').getPublicUrl(name).data.publicUrl;
 }
 
+async function saveStoryEdit(id,patch){const next={...(S.storyEdits||{})};next[id]={...(next[id]||{}),...patch};const {error}=await sb.from('settings').upsert({key:'storyEdits',value:next});if(error)throw error;S.storyEdits=next}
+async function savePhotoEdit(id,patch){const next={...(S.photoEdits||{})};next[id]={...(next[id]||{}),...patch};const {error}=await sb.from('settings').upsert({key:'photoEdits',value:next});if(error)throw error;S.photoEdits=next}
 const DD = { heart:'M50 88C8 58 4 26 28 16c12-5 22 4 22 12 0-8 10-17 22-12 24 10 20 42-22 72z', star:'M50 6l11 33h35L68 59l11 33-29-20-29 20 11-33L4 39h35z', bow:'M50 50C30 20 5 25 8 50C10 75 35 75 50 50C65 75 90 75 92 50C95 25 70 20 50 50zM44 44h12v12H44z', spark:'M50 4Q56 44 96 50Q56 56 50 96Q44 56 4 50Q44 44 50 4z' };
 const ORD = [4,2,7,0,5,3,6,1];
 const AT = [
@@ -409,8 +414,10 @@ function addForm(t){
 const ctl = (t, id) => admin ? `<p><button class="alt" data-edit="${t}" data-id="${id}">✏️ Edit</button> <button class="alt" data-del="${t}" data-id="${id}">🗑️ Delete</button></p>` : '';
 const V = {
   async gallery(){
-    const R = [-1.5,1,-1,1.5,-1,1,-1.5,1];
-    return `${head('02', 'The Lookbook', 'Photos')}<div class="wall">${ORD.map((p, k) => `<figure class="pol" style="--r:${R[k]}deg;--k:${k}" data-lb="${p}"><img src="${PH[p]}" loading="lazy" alt="${esc(CAP[p])}"><figcaption>Look ${String(k + 1).padStart(2, '0')}<b>${CAP[p]}</b></figcaption></figure>`).join('')}</div>`;
+    const R = [-1.5,1,-1,1.5,-1,1,-1.5,1], memories = await rows('memories');
+    const fixed = ORD.map((p,k) => {const ed=(S.photoEdits||{})[p]||{},src=ed.url||PH[p],cap=ed.caption||CAP[p],tools=admin?'<div class="story-admin photo-admin"><button class="alt" data-photo-caption="'+p+'">Edit caption</button><label class="story-upload">Replace photo<input type="file" accept="image/*" data-photo-file="'+p+'"></label></div>':'';return '<figure class="pol" style="--r:'+R[k]+'deg;--k:'+k+'" data-lb="'+p+'"><img src="'+esc(src)+'" loading="lazy" alt="'+esc(cap)+'"><figcaption>Look '+String(k+1).padStart(2,'0')+'<b>'+esc(cap)+'</b></figcaption>'+tools+'</figure>'}).join('');
+    const added = memories.filter(m=>m.url).map(m=>'<figure class="pol extra-photo"><img src="'+esc(m.url)+'" loading="lazy" alt="'+esc(m.caption||m.title)+'"><figcaption>'+esc(m.caption||m.title||'A little memory')+'</figcaption>'+ctl('memories',m.id)+(admin?'<label class="story-upload">Replace photo<input type="file" accept="image/*" data-memory-photo="'+m.id+'"></label>':'')+'</figure>').join('');
+    return head('02','The Lookbook','Photos')+'<div class="wall">'+fixed+added+'</div>'+addForm('memories');
   },
   async note(){
     const n = S.note || 'Write your heartfelt message here (log in as admin and tap Edit).';
@@ -419,31 +426,19 @@ const V = {
   },
   async memories(){
     const r = await rows('memories'); r.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-    const chapters = [
-      {id:'clash',title:'Clash Royale Nights',icon:'👑',meta:'The game I got you into',text:`Clash Royale started because I made you download it so we’d have something to play together. I was really into it; you weren’t as much, and you never beat me (still true). But you kept playing with me anyway. Whenever your phone needed more storage, Clash Royale was the app that got deleted. Fair enough. Still, whenever it was on your phone, you were always up for playing, and that made me happy. Maybe it was a small thing, but it meant a lot to me that you kept joining in even when it was mostly my game. We haven’t played in a while. We should again.`},
-      {id:'xfactor',title:'The X Factor',icon:'💌',meta:'Where we first started talking',text:`Hinge was where we met. A few messages in, I was already saying I wanted to care for you and provide for you. Not my first message, but definitely a bold thing to say that early. We talked a lot there, and even after meeting in person, the app was still part of our story. It wasn’t the whole relationship or anything. It was just where we found each other and got started. So yeah, Hinge gets a little credit. That’s the X factor, I guess.`},
-      {id:'patchups',title:'Breakups & Patch Ups',icon:'🧵',meta:'We kept finding our way back',text:`There were times things got so bad that we broke up. Then somehow, we talked again and found our way back to each other. From the talking stage to being together, we’ve had our share of rough patches. I don’t want to pretend it was all easy. But I’m glad we kept trying and ended up here, still happy together. I love you, you love me, and I hope it stays us for a long, long time. Forever and ever sounds good to me.`},
-      {id:'hyderabad',title:'Hyderabad Diaries',icon:'🌆',meta:'The trip I told everyone was for an MUN',text:`I told my family I was going to Hyderabad for an MUN. Really, I was going to see you. My phone display broke the moment I landed, so I spent the next three days without a working phone. It worked out, because I had my Pulugulu to keep me entertained. I missed the Pulugulu from the restaurant too—and my Pulugulu, obviously.
-
-We went to IKEA and talked about all the things we’d buy for our future home. At KFC, I’m pretty sure we ate at least two whole chickens. We had biryani at Pista House, where I made you cry for the first time and you nearly dumped me. I’m still sorry I made you cry. Then there was that mall—I think GVK Mall—where we were being very touchy, if I’m remembering right.
-
-Those days were some of the happiest of my life. The birthday gift you gave me, and all the thought and work you put into it, meant so much. The tickets too. I don’t think I’ve thanked you properly. I’m trying to make this website as my little way of returning that love, lol, but I could never match it. I love you so much. Umma.`},
-
-      {id:'birth',title:'The Birth and History of Miyadha',icon:'📖',meta:'The origin story',text:`Miyadha was born in Perumbavoor, or at a hospital somewhere nearby. Which hospital? Still a mystery. She comes from a very rich and well-known family. Her dad, E.K. Muhammad, owns half of Angamali (at least according to the stories) and runs a small shop called Options.
-
-She grew up to be a little gublu kid. She calls herself fat, but I love every childhood photo of her—she looks so cute in all of them. Her best friend was Asiya. Miyadha would even take money from Asiya. They fought a lot, but still bought loads of chocolates on the way home from school. She had quite a few crushes at St. Peter’s School in Kolenchery. Luckily, none of them got in the way of her ending up with me.
-
-She loves her brother Badusha a lot, and he’s a very mature guy. Now Miyadha is studying at NIFT in Hyderabad. She’s talented, hardworking, intelligent, and beautiful—and she has plans to grow her dad’s business and take over all of Angamali. Maybe Ernakulam too. I’m rooting for her.`}
-    ];    const extras = r.filter(m => !/clash\s*royale/i.test(`${m.title || ''} ${m.caption || ''}`));
+    const defaults = [{"id":"birth","title":"The Birth and History of Miyadha","icon":"📖","meta":"The origin story","text":"Miyadha was born in Perumbavoor, or at a hospital somewhere nearby. Which hospital? Still a mystery. She comes from a very rich and well-known family. Her dad, E.K. Muhammad, owns half of Angamali (at least according to the stories) and runs a small shop called Options.\n\nShe grew up to be a little gublu kid. She calls herself fat, but I love every childhood photo of her—she looks so cute in all of them. Her best friend was Asiya. Miyadha would even take money from Asiya. They fought a lot, but still bought loads of chocolates on the way home from school. She had quite a few crushes at St. Peter’s School in Kolenchery. Luckily, none of them got in the way of her ending up with me.\n\nShe loves her brother Badusha a lot, and he’s a very mature guy. Now Miyadha is studying at NIFT in Hyderabad. She’s talented, hardworking, intelligent, and beautiful—and she has plans to grow her dad’s business and take over all of Angamali. Maybe Ernakulam too. I’m rooting for her."},{"id":"xfactor","title":"The X Factor","icon":"💌","meta":"Where we first started talking","text":"Hinge is where we met, and we kept talking there for a while. Even after we met in person, it still felt like part of our story—not the whole thing, just the place that got us started. So yeah, Hinge gets a little credit. That’s the X factor, I guess."},{"id":"politics","title":"Political Talks","icon":"🗳️","meta":"Learning to meet in the middle","text":"At first, our political talks could get pretty heated. You were firmly LDF, while I was more around the centre and usually leaned UDF. You wanted me to be more of a feminist, and you definitely let me know when I wasn’t quite there yet.\n\nOver time, we started listening more and arguing a little less. We rubbed off on each other in our own ways: you moved closer to Congress, and I got better at understanding where you were coming from. My heart never really left Congress, but somewhere along the way, it stopped feeling like we had to pick sides against each other. We could disagree, learn a little, and still be us."},{"id":"clash","title":"Clash Royale Nights","icon":"👑","meta":"The game I got you into","text":"I made you download Clash Royale because I wanted someone to play with. You weren’t nearly as into it as I was, and you never beat me (I’m still counting that as a win). But you kept playing with me anyway. The only time you deleted it was when your phone ran out of storage—and honestly, fair enough. Whenever it was back on your phone, you were still happy to play with me. That little thing meant more to me than I probably said at the time. I miss playing together. We should start again sometime… and maybe I’ll let you win one."},{"id":"patchups","title":"Breakups & Patch Ups","icon":"🧵","meta":"We kept finding our way back","text":"There were times things got so bad that we broke up. Then somehow, we talked again and found our way back to each other. From the talking stage to being together, we’ve had our share of rough patches. I don’t want to pretend it was all easy. But I’m glad we kept trying and ended up here, still happy together. I love you, you love me, and I hope it stays us for a long, long time. Forever and ever sounds good to me."},{"id":"hyderabad","title":"Hyderabad Diaries","icon":"🌆","meta":"The trip I told everyone was for an MUN","text":"I told my family I was going to Hyderabad for an MUN. Really, I was going to see you. My phone display broke the moment I landed, so I spent the next three days without a working phone. It worked out, because I had my Pulugulu to keep me entertained. I missed the Pulugulu from the restaurant too—and my Pulugulu, obviously.\n\nWe went to IKEA and talked about all the things we’d buy for our future home. At KFC, I’m pretty sure we ate at least two whole chickens. We had biryani at Pista House, where I made you cry for the first time and you nearly dumped me. I’m still sorry I made you cry. Then there was that mall—I think GVK Mall—where we were being very touchy, if I’m remembering right.\n\nThose days were some of the happiest of my life. The birthday gift you gave me, and all the thought and work you put into it, meant so much. The tickets too. I don’t think I’ve thanked you properly. I’m trying to make this website as my little way of returning that love, lol, but I could never match it. I love you so much. Umma."}];
+    const chapters = defaults.map(c => ({...c,...((S.storyEdits||{})[c.id]||{})}));
+    const extras = r.filter(m => !/clash\s*royale/i.test(`${m.title || ''} ${m.caption || ''}`));
     if (!S._story) return `${head('03','The Story','Our storybook')}<section class="book"><div class="book-cover"><span class="book-kicker">OUR STORIES</span><h3>Story index</h3></div><div class="book-index">${chapters.map((c,i) => `<button class="chapter-link" data-story="${c.id}"><span class="chapter-number">${String(i+1).padStart(2,'0')}</span><b>${esc(c.title)}</b><span class="chapter-open">Open chapter <i>→</i></span></button>`).join('')}${extras.map((m,i) => `<button class="chapter-link" data-story="${esc(m.id)}"><span class="chapter-number">${String(i+chapters.length+1).padStart(2,'0')}</span><b>${esc(m.title || 'A little memory')}</b><span class="chapter-open">Open chapter <i>→</i></span></button>`).join('')}</div></section>` + addForm('memories');
     const chapter = chapters.find(c => c.id === S._story);
     if (chapter){
       let art = '';
       if (chapter.id === 'clash') art = `<div class="clash-arena" aria-label="A Clash Royale inspired arena"><div class="arena-river"></div><span class="arena-tower left">🏰</span><span class="arena-tower right">🏰</span><span class="arena-tower king">👑</span><div class="arena-cards"><span>⚔️</span><span>🐉</span><span>✨</span><span>🛡️</span></div></div>`;
-      if (chapter.id === 'xfactor') art = `<div class="story-art hinge-art"><div class="phone-top"><span>Hinge</span><i>♥</i></div><div class="hinge-lines"><span></span><span></span></div><div class="hinge-bubble">I want to care for you and provide for you.</div><div class="hinge-heart">♥</div><small>and then we kept talking 💬</small></div>`;
+      if (chapter.id === 'xfactor') art = `<div class="story-art hinge-art"><div class="phone-top"><span>Hinge</span><i>♥</i></div><div class="hinge-lines"><span></span><span></span></div><div class="hinge-bubble">Hey, how are you?</div><div class="hinge-heart">♥</div><small>and then we kept talking 💬</small></div>`;
       if (chapter.id === 'patchups') art = `<div class="story-art thread-art"><div class="thread-label"><span>talking stage</span><b>♡</b><span>us</span><b>♡</b><span>still here</span></div><div class="thread-line"><i>💔</i><i>↺</i><i>💗</i><i>↺</i><i>❤️</i></div><p>We found our way back to each other.</p></div>`;
       if (chapter.id === 'hyderabad') art = `<div class="story-art hyd-art"><div class="hyd-skyline"><i></i><i></i><i></i><i></i><i></i></div><span class="hyd-phone">📱💥</span><span class="hyd-ticket">✈️<small>HYD</small></span><span class="hyd-gift">🎁</span><p>Hyderabad · three days with you</p></div>`;
-      if (chapter.id === 'birth') art = `<div class="story-art birth-art"><div class="album-title">MIYADHA · THE EARLY YEARS</div><div class="album-photos"><span>👧🏻</span><span>🍫</span><span>🎒</span></div><div class="album-doodles">✿　♡　✿</div><p>Little Miyadha, growing up and taking over</p></div>`;      return `${head('03','The Story',chapter.title)}<button class="alt story-back" data-story-back>← Back to the index</button><article class="chapter ${chapter.id === 'clash' ? 'clash' : chapter.id === 'xfactor' ? 'date' : chapter.id === 'patchups' ? 'other' : chapter.id === 'yfactor' ? 'school' : chapter.id === 'birth' ? 'home' : 'travel'}" data-page="♥" style="margin-top:16px"><header class="chapter-head"><span class="chapter-icon">${chapter.icon}</span><div><h3 class="chapter-title">${esc(chapter.title)}</h3><small class="chapter-meta">${esc(chapter.meta)}</small></div></header>${art}<p class="chapter-copy">${esc(chapter.text)}</p></article>`;
+      if (chapter.id === 'politics') art = `<div class="story-art politics-art"><div class="ballot">☑</div><div class="ballot">☐</div><div class="talk-bubble">agree to disagree</div><div class="politics-hearts">♡　♥　♡</div></div>`;
+      if (chapter.id === 'birth') art = `<div class="story-art birth-art"><div class="album-title">MIYADHA · THE EARLY YEARS</div><div class="album-photos"><span>👧🏻</span><span>🍫</span><span>🎒</span></div><div class="album-doodles">✿　♡　✿</div><p>Little Miyadha, growing up and taking over</p></div>`;      return `${head('03','The Story',chapter.title)}<button class="alt story-back" data-story-back>← Back to the index</button><article class="chapter ${chapter.id === 'clash' ? 'clash' : chapter.id === 'xfactor' ? 'date' : chapter.id === 'patchups' ? 'other' : chapter.id === 'yfactor' ? 'school' : chapter.id === 'birth' ? 'home' : 'travel'}" data-page="♥" style="margin-top:16px"><header class="chapter-head"><span class="chapter-icon">${chapter.icon}</span><div><h3 class="chapter-title">${esc(chapter.title)}</h3><small class="chapter-meta">${esc(chapter.meta)}</small></div></header>${art}${chapter.photo ? `<figure class="chapter-photo"><img src="${esc(chapter.photo)}" alt="${esc(chapter.photoCaption || chapter.title)}"><figcaption class="story-photo-caption">${esc(chapter.photoCaption || '')}</figcaption></figure>` : ''}<p class="chapter-copy">${esc(chapter.text)}</p>${admin ? `<div class="story-admin"><button class="alt" data-story-edit="${chapter.id}">Edit story</button><label class="alt story-upload">Upload photo<input type="file" accept="image/*" data-story-photo="${chapter.id}"></label><button class="alt" data-story-caption="${chapter.id}">Edit photo caption</button></div>` : ''}</article>`;
     }
     const m = extras.find(x => String(x.id) === String(S._story));
     if (!m) { S._story = null; return this.memories(); }
@@ -454,7 +449,7 @@ She loves her brother Badusha a lot, and he’s a very mature guy. Now Miyadha i
     const r = await rows('reasons'); S._r = r; S._seen = S._seen || [];
     return `${head('04', 'The Jar', 'Reasons I love you')}<div class="card" style="text-align:center"><p class="jar-intro">Little things I love about you, all in one place.</p><div class="jar-stage"><div id="jarE">${JAR}</div></div><div id="jar"><p>Pick a note and see what you get 💌</p></div><button class="big" id="pick">Open a reason 💌</button><p><small class="jar-count" id="cnt">${S._seen.length}/${r.length} opened</small></p></div>` + (admin ? r.map(x => `<div class="card">${esc(x.text)}${ctl('reasons', x.id)}</div>`).join('') : '') + addForm('reasons');
   },  async quiz(){
-    return `${head('05','The Game','Miyadha vs Adheeb')}<section class="runner-card"><div class="runner-hud"><span class="miyadha-name">🌸 Miyadha</span><span class="runner-score">SCORE <strong id="runnerScore">0</strong> · FOOD <strong id="runnerFood">0</strong>/4</span><span class="adheeb-name">🏃 Adheeb</span></div><canvas id="runnerCanvas" width="720" height="260" aria-label="Miyadha running and jumping while Adheeb chases her"></canvas><p class="runner-hint">Jump with space or ↑. Duck with ↓. Collect the food, but four treats are too much!</p><p class="runner-status" id="runnerStatus">Ready? Adheeb is already catching up.</p><div class="runner-controls"><button id="runnerStart">Start running</button><button class="alt" id="runnerJump">Jump!</button><button class="alt" id="runnerDuck">Duck!</button><button class="alt" id="runnerAgain" hidden>Run again 💖</button></div></section>`;
+    return `${head('05','The Game','Miyadha vs Adheeb')}<section class="runner-card"><div class="runner-hud"><span class="miyadha-name">🌸 Miyadha</span><span class="runner-score"><strong id="runnerStage">Perumbavoor</strong> · LIVES <strong id="runnerLives">♥♥♥♥♥</strong></span><span class="adheeb-name">🏃 Adheeb</span></div><div class="runner-progress"><span id="runnerProgress"></span></div><canvas id="runnerCanvas" width="320" height="180" aria-label="Miyadha and Adheeb in a pixel-art adventure"></canvas><p class="runner-hint">Tap or press space / ↑ to jump · collect hearts, mangoes and crowns</p><p class="runner-status" id="runnerStatus">Our little story run 💗</p><div class="runner-controls"><button id="runnerStart">Start our story 💌</button><button class="alt" id="runnerJump">Jump!</button><button class="alt" id="runnerPause">Pause</button><button class="alt" id="runnerMute">Sound on</button><button class="alt" id="runnerAgain" hidden>Try this stage again</button></div></section>`;
   },  async places(){
     const r = (await rows('places')).filter(p => !/roadurg|drr?gam\s+cheruvu|durgam\s+cheruvu/i.test(p.name || '')); S._p = r;
     const mk = a => `<button class="mk ${a.k}${a.key ? ' key' : ''}" data-place="${a.id}" style="left:${a.x}%;top:${a.y}%" aria-label="${esc(a.n)}"><i>${a.ic}</i><span class="lb s-${a.s}">${esc(a.sn || a.n)}</span></button>`;
@@ -475,79 +470,160 @@ She loves her brother Badusha a lot, and he’s a very mature guy. Now Miyadha i
     return head('07', 'The Reveal', 'Videos for you') + (r.length ? r.map((v, i) => `<div class="card reel"><small class="ch">Reel ${i + 1}</small>${media(v.url)}<b>${esc(v.title)}</b>${ctl('videos', v.id)}</div>`).join('') : '<div class="card"><div class="vf">Something special is still being edited. Check back soon.</div></div>') + addForm('videos');
   }
 };
-const MIYADHA_PIX = ['..HHHH..','.HHHHHH.','.HSSSSHH','.HSESSHH','..SSSS..','..PPPP..','.PPPPPP.','..VVVV..','.LL..LL.','BB....BB'];
-const ADHEEB_PIX = ['..DDDD..','.DDDDDD.','.DSSSSDD','.DSESSDD','..SSSS..','..BBBB..','.BBBBBB.','..OOOO..','.LL..LL.','BB....BB'];
-const MIYADHA_DUCK = ['..HHHH..','.HHHHHH.','.HSSSSHH','..PPPP..','.PPPPPP.','..VVVV..','BB....BB'];
-const GAME_SPOTS = AT.map(a => ({id:a.id,label:a.sn || a.n,icon:a.ic}));
-const GAME_FOOD = [{icon:'🍦',name:'Spanish Delight'},{icon:'🍝',name:'Pasta'},{icon:'🍚',name:'Rice bowl'},{icon:'🍜',name:'Chowmein noodles'}];
-let RG = null;
-function initRunner(){
-  const canvas = $('#runnerCanvas'); if (!canvas) return;
-  if (RG?.raf) cancelAnimationFrame(RG.raf);
-  const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
-  RG = {canvas,ctx,state:'ready',score:0,distance:0,playerY:168,vy:0,grounded:true,obstacles:[],spawn:1.4,last:0,frame:0,ground:218,raf:0,chaserX:70,mangoes:[],foods:[],mangoSpawn:2.4,foodSpawn:3.1,foodEaten:0,ducking:false,catchReason:''};
-  drawRunner(RG);
+// ================= PIXEL STORY RUNNER =================
+// All balance and timing values live here for easy tuning.
+const CONFIG = {
+  WIDTH:320, HEIGHT:180, STEP:1/60, SPEED:54, MAX_SPEED:76, SPEED_RAMP:.12, GRAVITY:390, JUMP:178,
+  SCENE_LENGTH:1450, OBSTACLE_FIRST:2.25, OBSTACLE_MIN:1.8, OBSTACLE_MAX:2.55, OBSTACLE_RAMP:.16,
+  PICKUP_RATE:1.8, COYOTE:.14, BUFFER:.16, INVULN:1.2, HIT_SLOW:.65,
+  LIVES:5, SHAKE:3, PIXEL:1, REDUCED_MOTION:matchMedia('(prefers-reduced-motion: reduce)').matches,
+  STAGE_LINES:['A little hello that started everything.','Perumbavoor, where Miyadha’s story began.','A school full of old memories and silly crushes.','A burger on the tracks. Still one of our stories.','A train rolls by while we keep moving.','Two nervous people, one very sweet first date.','The shutter, the guard, and a peek at The Odyssey.','A quiet night at Eloor, under all those stars.','A little flight, and a lot of Hyderabad memories.','NIFT: talent, big plans, and a very busy girl.','A tiny IKEA visit for our future home.','Chicken, laughter, and absolutely no restraint.','Biryani, one apology, and a memory we still carry.','23 Urban Suites: our little home away from home.','One day, all our favourite things under one roof.'],
+  FINAL_LINE:'One day, our favourite place will be home.',
+  FOODS:['Spanish Delight','Pasta','Rice bowl','Chowmein'],
+  BIRTHDAY_MESSAGE:'[Your birthday message to her here]',
+  PLACES:[
+    {name:'Hinge',tag:'The first message',scene:'phone',mood:0x3760},
+    {name:'Perumbavoor',tag:'Where it began',scene:'town',mood:0x4830},
+    {name:'St. Peter’s School, Kolenchery',tag:'School days',scene:'school',mood:0x5540},
+    {name:'Aluva Metro Station',tag:'Mind the burger',scene:'aluva',obstacle:'burger',mood:0x6650},
+    {name:'Edappally Metro Station',tag:'A train goes by',scene:'edappally',obstacle:'train',mood:0x7040},
+    {name:'Forwards Cafe, Kakkanad',tag:'Our first date',scene:'cafe',obstacle:'cup',mood:0x5f50},
+    {name:'Oberon Mall',tag:'The shutter opens',scene:'mall',obstacle:'guard',mood:0x6940},
+    {name:'Eloor Tourist Home',tag:'A little night-time pause',scene:'night',mood:0x3d50},
+    {name:'Hyderabad',tag:'A little flight to see you',scene:'flight',mood:0x5f50},
+    {name:'NIFT Hyderabad',tag:'Your very fancy institute',scene:'nift',obstacle:'book',mood:0x7050},
+    {name:'IKEA',tag:'Planning our future home',scene:'ikea',obstacle:'box',mood:0x6350},
+    {name:'KFC',tag:'At least two chickens?',scene:'kfc',food:true,mood:0x7350},
+    {name:'Pista House',tag:'Biryani, and one big apology',scene:'pista',food:true,obstacle:'pot',mood:0x6550},
+    {name:'23 Urban Suites',tag:'Ninety per cent of our time',scene:'urban',mood:0x5b50},
+    {name:'Home',tag:'Our little finish line',scene:'home',final:true,mood:0x5260}
+  ]
+};
+const MIYADHA_PIX=['..HHHH..','.HHHHHH.','.HSSSSHH','.HSESSHH','..SSSS..','..PPPP..','.PPPPPP.','..VVVV..','.LL..LL.','BB....BB'];
+const MIYADHA_JUMP=['..HHHH..','.HHHHHH.','.HSSSSHH','.HSESSHH','..SSSS..','..PPPP..','.PPPPPP.','...VV...','..LL.LL.','BB....BB'];
+const ADHEEB_PIX=['..DDDD..','.DDDDDD.','.DSSSSDD','.DSESSDD','..SSSS..','..BBBB..','.BBBBBB.','..OOOO..','.LL..LL.','BB....BB'];
+const PAL={H:'#35213e',S:'#f0b391',E:'#291a32',P:'#ff4f91',V:'#8c5fd1',L:'#342940',B:'#ffd16c',D:'#342b43',O:'#5b386a'};
+let RG=null, MUTED=false, AUDIO=null, MUSIC_TIMER=0;
+function gameSound(kind){if(MUTED)return;try{AUDIO=AUDIO||new(window.AudioContext||window.webkitAudioContext)();if(AUDIO.state==='suspended')AUDIO.resume();const t=AUDIO.currentTime,o=AUDIO.createOscillator(),v=AUDIO.createGain();const cfg={jump:[420,.12,'triangle',680],hit:[160,.22,'square',85],collect:[760,.11,'sine',1120],stage:[520,.36,'triangle',980],catch:[740,.05,'sine',320]}[kind]||[400,.1,'sine',650];o.type=cfg[2];o.frequency.setValueAtTime(cfg[0],t);o.frequency.exponentialRampToValueAtTime(cfg[3],t+cfg[1]);v.gain.setValueAtTime(.08,t);v.gain.exponentialRampToValueAtTime(.001,t+cfg[1]);o.connect(v);v.connect(AUDIO.destination);o.start();o.stop(t+cfg[1]+.01)}catch(e){}}
+// Create a fixed-resolution canvas and keep its pixels crisp at every viewport size.
+function initRunner(){const canvas=$('#runnerCanvas');if(!canvas)return;if(RG?.raf)cancelAnimationFrame(RG.raf);clearInterval(MUSIC_TIMER);const ctx=canvas.getContext('2d',{alpha:false});ctx.imageSmoothingEnabled=false;RG={canvas,ctx,state:'title',stage:0,progress:0,score:0,lives:CONFIG.LIVES,obstacles:[],pickups:[],spawn:CONFIG.OBSTACLE_FIRST,pickupTimer:1.3,playerY:CONFIG.HEIGHT-39,vy:0,grounded:true,coyote:0,jumpBuffer:0,jumpHeld:false,invuln:0,slow:0,boost:0,shake:0,acc:0,last:0,raf:0,frame:0,world:0,duck:false,particles:[],gap:110};drawRunner(RG);}
+function px(c,x,y,w,h,color){c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.max(1,Math.round(w)),Math.max(1,Math.round(h)))}
+function textPx(c,t,x,y,color,size=8,align='center'){c.fillStyle=color;c.font='bold '+size+'px monospace';c.textAlign=align;c.textBaseline='middle';c.fillText(t,x,y)}
+function drawPixel(c,sprite,x,y,pal,step=0){for(let r=0;r<sprite.length;r++)for(let col=0;col<8;col++){const ch=sprite[r][col];if(ch!=='.')px(c,x+col*2+(r>7?(col<4?-step:step):0),y+r*2,2,2,pal[ch]||'#fff')}}
+// Three restrained parallax bands; the landmarks themselves stay steady and readable.
+function drawBackdrop(g){const c=g.ctx,w=320,h=180,st=CONFIG.PLACES[g.stage];const night=st.scene==='night';c.fillStyle=night?'#17284b':'#b8e8f6';c.fillRect(0,0,w,h);if(night){for(let i=0;i<24;i++){const x=(i*47+12)%320,y=(i*29+9)%92;px(c,x,y,1,1,'#fff4b2')}}else{px(c,263,17,15,15,'#ffe891');px(c,267,13,7,3,'#ffe891')}
+  // far layer: soft skyline / hills, moving only a few pixels per stage
+  const farShift=Math.floor(g.world*.018)%320;for(let i=0;i<5;i++){const x=i*78-farShift;px(c,x,91,58,34,night?'#263c66':'#89cdb5');px(c,x+7,83,35,12,night?'#263c66':'#89cdb5')}
+  // middle layer: each place has a distinct, simple pixel-art landmark.
+  const shift=Math.floor(g.world*.045)%360, bx=178-shift;
+  function building(x,y,width,height,color,roof,label){px(c,x,y,width,height,color);px(c,x-3,y-4,width+6,5,roof);for(let xx=x+7;xx<x+width-5;xx+=12)px(c,xx,y+10,5,7,night?'#ffe89a':'#fff0bd');px(c,x+width/2-22,y+height-12,44,9,'#fff5df');textPx(c,label,x+width/2,y+height-7,'#4d3454',5)}
+  const sc=st.scene;
+  if(sc==='phone'){px(c,205,41,54,92,'#302840');px(c,210,49,44,73,'#f8dce9');px(c,215,57,34,17,'#fff');textPx(c,'HINGE',232,65,'#e74b85',6);px(c,215,82,34,21,'#f2b5cc');textPx(c,'To care and',232,111,'#60354c',4);textPx(c,'provide for you',232,117,'#60354c',4);}
+  else if(sc==='town'){building(bx,61,98,66,'#f5d9ae','#ce866a','PERUMBAVOOR');px(c,bx+34,41,27,20,'#3d8d69');px(c,bx+38,35,19,11,'#62b978');}
+  else if(sc==='school'){building(bx,50,106,78,'#f4d884','#c66c58','ST PETER’S');px(c,bx+47,33,14,17,'#c66c58');}
+  else if(sc==='aluva'||sc==='edappally'){px(c,0,117,320,9,'#536176');for(let x=0;x<320;x+=25)px(c,x,120,13,2,'#dfe7dd');building(bx,51,112,67,'#d9eff1','#438cb1',sc==='aluva'?'ALUVA METRO':'EDAPPALLY');px(c,0,102,320,3,'#5b8cac');if(sc==='edappally'){const tx=30+((g.world*.32)%390);px(c,tx,91,66,24,'#e9f5f6');px(c,tx+7,96,13,8,'#4fadd0');px(c,tx+27,96,13,8,'#4fadd0');px(c,tx+47,96,12,8,'#4fadd0');px(c,tx-3,89,72,3,'#ee5c73')}}
+  else if(sc==='cafe'){building(bx,53,106,75,'#f8d5b5','#b76b68','FORWARDS');px(c,bx+18,78,70,3,'#7a443f');px(c,bx+29,81,4,25,'#80594f');px(c,bx+73,81,4,25,'#80594f');px(c,bx+45,72,17,3,'#6f4852');px(c,bx+51,65,4,8,'#6f4852')}
+  else if(sc==='mall'){building(bx,49,114,79,'#d9d9f0','#7c65ad','OBERON MALL');const open=38+Math.floor((Math.sin(g.world*.012)+1)*11);px(c,bx+9,91,96,28,'#403752');px(c,bx+9,91,96,open,'#c6b9db');px(c,bx+73,66,30,20,'#fff');textPx(c,'ODYSSEY',88,76,'#c35b78',4);px(c,bx+5,Math.max(88,91+open-4),6,17,'#f4d6aa')}
+  else if(sc==='night'){building(bx,62,82,64,'#43557a','#8278a9','ELOOR');px(c,bx+31,46,20,16,'#514e76');px(c,bx+38,52,7,8,'#ffe8a1');}
+  else if(sc==='flight'){px(c,188,50,95,18,'#fff');textPx(c,'HYDERABAD  ✈',235,59,'#536b9a',6);px(c,211,84,42,17,'#f4f0e5');px(c,228,73,8,38,'#f4f0e5');px(c,202,91,60,5,'#f4f0e5')}
+  else if(sc==='nift')building(bx,42,112,86,'#e3ddf1','#8569a8','NIFT');
+  else if(sc==='ikea'){building(bx,47,112,81,'#2f74bd','#f3d64c','IKEA');px(c,bx+14,79,23,28,'#f4d67b');px(c,bx+48,76,25,31,'#b98367');px(c,bx+82,82,19,25,'#9ac4a2')}
+  else if(sc==='kfc'||sc==='pista'){building(bx,51,106,77,sc==='kfc'?'#f5e9d5':'#f0dbac',sc==='kfc'?'#d84d50':'#a65c47',sc==='kfc'?'KFC':'PISTA HOUSE');px(c,bx+43,77,20,25,sc==='kfc'?'#d34a4e':'#ad7650');px(c,bx+39,72,28,5,'#fff4dd');}
+  else if(sc==='urban'){building(bx,42,109,86,'#ddd8ed','#746b99','23 URBAN');for(let y=62;y<104;y+=13)for(let x=bx+15;x<bx+95;x+=18)px(c,x,y,8,7,'#ffe29b')}
+  else {px(c,0,76,320,55,'#f9d9e6');px(c,0,76,320,5,'#fff0d0');px(c,0,127,320,4,'#d19b79');px(c,207,88,58,39,'#c89068');px(c,214,81,45,12,'#d8aa7d');px(c,213,91,16,19,'#f7ead5');px(c,236,91,23,19,'#fff2cc');px(c,20,105,43,22,'#8768a1');px(c,25,99,32,8,'#a184b6');px(c,86,111,32,17,'#5c9bb0');px(c,91,106,22,7,'#f4c891');textPx(c,'OUR HOME',50,65,'#a24374',7)}
+  // near layer gives depth without the busy, fast-moving city effect
+  c.fillStyle=night?'#263f58':'#9bd398';c.fillRect(0,132,320,48);c.fillStyle=night?'#314d68':'#78bd74';c.fillRect(0,146,320,34);for(let x=0;x<320;x+=24){px(c,x-Math.floor(g.world*.16)%24,155,12,2,night?'#526b88':'#62a967')}
+  // stage label is pinned to the viewport and never races past the player
+  px(c,5,5,148,20,'#fff7e8');px(c,5,5,3,20,'#ff5591');textPx(c,('0'+(g.stage+1)).slice(-2)+' / '+st.name,14,15,'#583448',6,'left');
 }
-function drawRunner(g){
-  const {ctx:c}=g,W=720,H=260,ground=g.ground;
-  const sky=c.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#73dff5');sky.addColorStop(.72,'#d5f6ff');sky.addColorStop(1,'#ffe9b6');c.fillStyle=sky;c.fillRect(0,0,W,H);
-  for(let i=0;i<5;i++){const x=((i*173-g.distance*.12)%820+820)%820-60,y=28+(i%3)*21;c.fillStyle='#ffffffc9';c.fillRect(x,y,34,10);c.fillRect(x+8,y-8,20,9);c.fillRect(x+28,y+4,18,7)}
-  c.fillStyle='#a7e7ae';c.beginPath();c.moveTo(0,174);c.lineTo(0,150);c.lineTo(90,132);c.lineTo(180,154);c.lineTo(292,125);c.lineTo(396,156);c.lineTo(505,130);c.lineTo(620,154);c.lineTo(720,135);c.lineTo(720,218);c.closePath();c.fill();
-  c.fillStyle='#81d69a';c.beginPath();c.moveTo(0,184);c.lineTo(100,158);c.lineTo(212,181);c.lineTo(336,150);c.lineTo(466,182);c.lineTo(582,153);c.lineTo(720,177);c.lineTo(720,218);c.lineTo(0,218);c.fill();
-  // Each passing shop sign is one of the places from the map.
-  const shift=(g.distance*.42)%170;
-  for(let i=0;i<6;i++){const spot=GAME_SPOTS[(Math.floor(g.distance/170)+i)%GAME_SPOTS.length],x=i*170-shift-28,base=157+(i%2)*5,bh=29+(i%3)*8;let wall=spot.id==='uds'?'#eee8ff':spot.id==='opt'?'#f7c66f':spot.id==='alu'||spot.id==='met'?'#b9e9f6':spot.id==='elo'?'#ffe2c3':['#ffe5ad','#ffd3e3','#e1d8ff'][i%3];c.fillStyle=wall;c.fillRect(x,base-bh,118,bh);c.fillStyle='#fff8e7';c.fillRect(x+7,base-bh+8,12,12);c.fillRect(x+27,base-bh+8,12,12);c.fillRect(x+79,base-bh+8,12,12);c.fillStyle=spot.id==='alu'||spot.id==='met'?'#3287aa':spot.id==='opt'?'#d65e66':'#a9517b';c.fillRect(x-2,base-bh-14,122,14);c.fillStyle='#fff';c.font='600 9px Fredoka, sans-serif';c.textAlign='center';const label=spot.label.toUpperCase();c.fillText(label.length>19?label.slice(0,18)+'…':label,x+59,base-bh-4);if(spot.id==='alu'||spot.id==='met'){c.fillStyle='#3287aa';c.fillRect(x+38,base-bh-24,40,6);c.fillRect(x+46,base-bh-29,24,5);c.fillStyle='#e5bb72';c.fillRect(x-5,base-bh+bh-7,128,4)}if(spot.id==='opt'){c.fillStyle='#5c70bc';c.fillRect(x+42,base-bh+19,31,20);c.fillStyle='#fff';c.fillRect(x+47,base-bh+24,21,3)}if(spot.id==='uds'){c.fillStyle='#7866aa';for(let w=0;w<3;w++)for(let r=0;r<3;r++)c.fillRect(x+12+w*30,base-bh+5+r*9,9,5)}if(spot.id==='elo'){c.fillStyle='#a66b4f';c.beginPath();c.moveTo(x+36,base-bh);c.lineTo(x+58,base-bh-15);c.lineTo(x+81,base-bh);c.fill()}}
-  c.fillStyle='#6fbd63';c.fillRect(0,ground,W,H-ground);c.fillStyle='#4d9b57';c.fillRect(0,ground,W,7);c.fillStyle='#9bdb7e';c.fillRect(0,ground+7,W,4);
-  const offset=(g.distance*.7)%38;for(let x=-38-offset;x<W;x+=38){c.fillStyle='#d9a769';c.fillRect(x,ground+16,23,5);c.fillStyle='#b88058';c.fillRect(x+8,ground+31,19,5);c.fillStyle='#58a95b';c.fillRect(x+27,ground+8,4,4)}
-  for(let i=0;i<9;i++){const x=((i*101-g.distance*.9)%760+760)%760;c.fillStyle=i%2?'#fff4a5':'#ff8fb8';c.fillRect(x,ground+9,5,5);c.fillStyle='#fff';c.fillRect(x+5,ground+13,3,3)}
-  // Hurdles from our dates: a KFC bucket, an IKEA parcel, biryani and a metro gate.
-  for(const o of g.obstacles){const x=o.x,y=ground-o.h;if(o.type===0){c.fillStyle='#fff';c.fillRect(x+5,y+8,25,o.h-8);c.fillStyle='#e53d50';c.fillRect(x+5,y+14,25,5);c.fillRect(x+8,y+23,4,8);c.fillRect(x+23,y+23,4,8);c.fillStyle='#e53d50';c.fillRect(x+2,y+5,31,6);c.font='14px sans-serif';c.fillText('🍗',x+8,y+24)}else if(o.type===1){c.fillStyle='#2477bd';c.fillRect(x+2,y+8,30,o.h-8);c.fillStyle='#ffd84f';c.fillRect(x+2,y+8,30,7);c.fillStyle='#fff';c.fillRect(x+8,y+18,18,3);c.fillRect(x+8,y+25,14,3);c.fillStyle='#dfa74f';c.fillRect(x+5,ground-4,24,4)}else if(o.type===2){c.fillStyle='#bd5147';c.fillRect(x+3,y+14,27,o.h-14);c.fillStyle='#f4b552';c.fillRect(x,y+8,33,9);c.fillStyle='#fff1c8';c.fillRect(x+7,y+21,18,4);c.font='13px sans-serif';c.fillText('🍚',x+7,y+18)}else{c.fillStyle='#5b8fc2';c.fillRect(x+4,y+8,25,o.h-8);c.fillStyle='#f6d067';c.fillRect(x,y+6,33,7);c.fillStyle='#fff';c.fillRect(x+9,y+17,15,4);c.fillStyle='#d66c81';c.fillRect(x+10,y+25,13,4)}}
-  for(const m of g.mangoes){c.strokeStyle='#fff8d0';c.lineWidth=3;c.beginPath();c.moveTo(m.x+22,m.y+8);c.lineTo(m.x+36,m.y+8);c.moveTo(m.x+23,m.y+15);c.lineTo(m.x+31,m.y+15);c.stroke();c.fillStyle='#ffbb38';c.beginPath();c.ellipse(m.x+12,m.y+11,11,8,-.45,0,Math.PI*2);c.fill();c.fillStyle='#ff8c30';c.beginPath();c.ellipse(m.x+8,m.y+10,5,7,-.45,0,Math.PI*2);c.fill();c.fillStyle='#58b876';c.fillRect(m.x+17,m.y+1,5,4)}
-  for(const f of g.foods){c.fillStyle='#fff';c.beginPath();c.arc(f.x+12,f.y+12,16,0,Math.PI*2);c.fill();c.font='22px sans-serif';c.textAlign='center';c.fillText(f.icon,f.x+12,f.y+19);c.fillStyle='#7a4263';c.font='600 8px Fredoka, sans-serif';c.fillText(f.name,f.x+12,f.y+31)}
-  const chaser=g.chaserX;drawPixel(c,ADHEEB_PIX,chaser,ground-50,{D:'#353044',S:'#e9a882',E:'#281c33',B:'#4b70c8',O:'#5b3768',L:'#332b42'},g.frame);
-  if(g.ducking)drawPixel(c,MIYADHA_DUCK,150,ground-35,{H:'#3b2142',S:'#f2b392',E:'#2e1c31',P:'#ff4f8b',V:'#845bd1',L:'#372946',B:'#ffcf6d'},g.frame);else drawPixel(c,MIYADHA_PIX,150,g.playerY,{H:'#3b2142',S:'#f2b392',E:'#2e1c31',P:'#ff4f8b',V:'#845bd1',L:'#372946',B:'#ffcf6d'},g.frame);
-  c.font='600 12px Fredoka, sans-serif';c.textAlign='center';c.fillStyle='#43243f';c.fillText('Adheeb',chaser+20,ground-58);c.fillStyle='#bc3471';c.fillText('Miyadha',170,g.ducking?ground-41:g.playerY-8);
-  if(g.state==='ready'){c.fillStyle='#55294a';c.font='600 18px Fredoka, sans-serif';c.textAlign='center';c.fillText('A little run through Miyadha’s world!',W/2,45)}
-  if(g.state==='caught'){c.fillStyle='#6f3158cc';c.fillRect(0,0,W,H);c.textAlign='center';c.fillStyle='#fff';c.font='600 28px Fredoka, sans-serif';c.fillText('Adheeb caught Miyadha!',W/2,106);c.font='500 17px Fredoka, sans-serif';c.fillText(g.catchReason==='food'?'Too many snacks! Mwah! 💋':'Mwah! caught you 💋',W/2,137)}
+function drawPickup(c,p){const x=Math.round(p.x),y=Math.round(p.y);if(p.kind==='snack'){px(c,x,y+3,15,10,'#fff4dd');px(c,x+2,y,11,3,'#ffcb68');textPx(c,p.label.slice(0,2).toUpperCase(),x+7,y+8,'#874e57',5)}else if(p.kind==='heart'){px(c,x+3,y,4,3,'#ff5a98');px(c,x,y+3,10,4,'#ff5a98');px(c,x+2,y+7,6,3,'#e64480');px(c,x+4,y+10,2,2,'#cb3972')}else if(p.kind==='mango'){px(c,x+2,y+2,9,7,'#ffc343');px(c,x+4,y,6,10,'#ff9c42');px(c,x+9,y,4,2,'#55a968')}else{px(c,x+1,y+4,12,2,'#ffd957');px(c,x+3,y+1,2,3,'#ffd957');px(c,x+6,y,2,4,'#ffd957');px(c,x+10,y+2,2,3,'#ffd957')}}
+function drawRunner(g){const c=g.ctx;let shake=(!CONFIG.REDUCED_MOTION&&g.shake>0)?Math.round((Math.random()-.5)*g.shake):0;c.save();c.translate(shake,0);drawBackdrop(g);
+  // Obstacles are chunky, themed, and leave room to react.
+  for(const o of g.obstacles){const x=Math.round(o.x),y=135-o.h;if(o.type==='burger'){px(c,x+2,y+5,19,5,'#d58a43');px(c,x,y+10,23,4,'#78a95e');px(c,x+3,y+14,17,4,'#9a4e37');px(c,x+1,y+18,21,5,'#e8b267');px(c,x+7,y+6,2,1,'#fff2ce');px(c,x+14,y+6,2,1,'#fff2ce')}
+  else if(o.type==='cup'){px(c,x+5,y+4,13,18,'#f7e9dc');px(c,x+4,y+3,15,4,'#795443');px(c,x+8,y,7,4,'#fff4e7');px(c,x+10,y+9,4,5,'#f16391')}
+  else if(o.type==='train'){px(c,x,y+4,40,23,'#edf5f4');px(c,x+3,y,34,6,'#e95b70');for(let i=0;i<3;i++)px(c,x+5+i*10,y+9,7,7,'#61b4d2');px(c,x+1,y+27,38,3,'#47536e')}
+  else if(o.type==='box'){px(c,x,y+3,25,22,'#2674b9');px(c,x,y+3,25,4,'#f5d84e');px(c,x+10,y+7,4,14,'#e9c64d');px(c,x+4,y+13,17,2,'#e9c64d')}
+  else if(o.type==='guard'){px(c,x+7,y,10,6,'#403442');px(c,x+5,y+6,14,17,'#6b5a85');px(c,x+2,y+11,4,8,'#e5b089');px(c,x+19,y+11,4,8,'#e5b089')}
+  else if(o.type==='book'){px(c,x,y+2,12,24,'#fae8a3');px(c,x+13,y+2,12,24,'#df8fb4');px(c,x+11,y+2,3,24,'#8a5476')}
+  else if(o.type==='pot'){px(c,x+3,y+8,19,15,'#b65749');px(c,x,y+5,25,5,'#e5b251');px(c,x+8,y+3,8,3,'#fff0c5')}
+  else {px(c,x,y+8,24,12,'#9b634d');px(c,x+2,y+4,20,5,'#d7ad79');px(c,x+8,y+1,8,4,'#e8c891')}}
+  for(const p of g.pickups)drawPickup(c,p);
+  // Tiny animated feet, jump pose and occasional look-back.
+  const runStep=Math.floor(g.frame/7)%2, my=g.playerY, sprite=!g.grounded?MIYADHA_JUMP:MIYADHA_PIX;drawPixel(c,sprite,62,my,PAL,runStep);drawPixel(c,ADHEEB_PIX,Math.max(12,62-g.gap),135-20,PAL,runStep);
+  if(g.frame%420<32)textPx(c,'♥',68,my-7,'#ff4e93',7);
+  if(g.invuln>0&&Math.floor(g.frame/4)%2===0)px(c,59,my-2,20,18,'#ffffff55');
+  for(const p of g.particles){px(c,p.x,p.y,2,2,p.color)}
+  // Chase gap / catch-up meter
+  px(c,185,8,129,11,'#ffffffdd');textPx(c,'ADHEEB',190,13,'#69485f',5,'left');px(c,221,10,83,5,'#e8c6d3');px(c,221,10,Math.max(2,Math.min(83,83-g.gap*.55)),5,'#fb5790');
+  if(g.state==='title'){panel(c,'A tiny adventure for two',46,61,228,56);textPx(c,'A NEW PLACE AROUND EVERY CORNER',160,77,'#65465b',6);textPx(c,'Tap Start when you’re ready',160,94,'#cf4380',7);}
+  
+  
+  
+  if(g.state==='lifeLost'){panel(c,'Adheeb got distracted 😅',38,58,244,62);textPx(c,'Three little bumps. Try this place again?',160,83,'#67475d',6);textPx(c,'Your story is still going 💗',160,100,'#bd4778',7)}
+  if(g.state==='paused'){panel(c,'Taking a tiny break',65,65,190,44);textPx(c,'Tap Resume when ready',160,87,'#bd4778',7)}
+  c.restore()}
+function panel(c,title,x,y,w,h){px(c,x+2,y+3,w,h,'#49374b');px(c,x,y,w,h,'#fff7e8');px(c,x,y,3,h,'#ff5793');textPx(c,title,160,y+15,'#573448',8);}
+function beginRunner(){const g=RG;if(!g)return;clearInterval(MUSIC_TIMER);g.state='running';g.progress=0;g.score=0;g.lives=CONFIG.LIVES;g.stage=1;g.world=0;g.obstacles=[];g.pickups=[];g.gap=110;g.foodCount=0;g.spawn=CONFIG.OBSTACLE_FIRST;g.pickupTimer=1.25;g.playerY=115;g.vy=0;g.grounded=true;g.coyote=0;g.jumpBuffer=0;g.invuln=0;g.slow=0;g.boost=0;g.last=performance.now();g.acc=0;g.frame=0;g.particles=[];$('#runnerStart').hidden=true;$('#runnerAgain').hidden=true;$('#runnerStatus').textContent='The first message: “To care and provide for you.” Here we go!';setStageMood(g.stage);updateHUD();if(!g.raf)g.raf=requestAnimationFrame(runnerFrame)}
+function updateHUD(){if(!RG)return;const place=CONFIG.PLACES[RG.stage]||CONFIG.PLACES[1];$('#runnerStage').textContent=place.name;$('#runnerLives').textContent='♥'.repeat(RG.lives)+'♡'.repeat(CONFIG.LIVES-RG.lives);$('#runnerProgress').style.width=Math.round(Math.max(5,100-RG.gap/1.6))+'%'}
+// A tap queues one complete jump; there is no hold-to-jump behavior.
+function jumpRunner(){const g=RG;if(!g)return;if(g.state==='title'){beginRunner();return}if(g.state==='lifeLost'){beginRunner();return}if(g.state==='paused')return;if(g.state!=='running')return;if(g.grounded||g.coyote>0)g.jumpBuffer=CONFIG.BUFFER}
+function releaseJump(){}
+function retryStage(){beginRunner()}
+function hitRunner(){const g=RG;if(g.invuln>0)return;g.lives--;g.invuln=CONFIG.INVULN;g.slow=1.1;g.gap=Math.min(145,g.gap+13);g.shake=CONFIG.REDUCED_MOTION?0:CONFIG.SHAKE;g.vy=-45;gameSound('hit');updateHUD();$('#runnerStatus').textContent='Oops, Adheeb bumped into something. Miyadha gets a head start!';if(!g.lives){g.state='lifeLost';$('#runnerAgain').hidden=false}}
+// One endless run: landmarks rotate in order while obstacles and treats are generated as you go.
+function runnerFrame(now){const g=RG;if(!g||!g.canvas.isConnected)return;g.raf=requestAnimationFrame(runnerFrame);if(g.state!=='running'){drawRunner(g);return}const elapsed=Math.min(.1,Math.max(0,(now-g.last)/1000));g.last=now;g.acc+=elapsed;while(g.acc>=CONFIG.STEP&&g.state==='running'){updateRunner(CONFIG.STEP);g.acc-=CONFIG.STEP}drawRunner(g)}
+function updateRunner(dt){const g=RG;g.frame++;g.score+=dt;g.world+=CONFIG.SPEED*dt;const stageNow=1+Math.floor(g.world/CONFIG.SCENE_LENGTH)%(CONFIG.PLACES.length-1);if(stageNow!==g.stage){g.stage=stageNow;setStageMood(g.stage);$('#runnerStatus').textContent='Now running through '+CONFIG.PLACES[g.stage].name+' 💗';gameSound('stage');updateHUD()}g.progress=g.world%CONFIG.SCENE_LENGTH;const st=CONFIG.PLACES[g.stage];g.coyote=g.grounded?CONFIG.COYOTE:Math.max(0,g.coyote-dt);g.jumpBuffer=Math.max(0,g.jumpBuffer-dt);g.invuln=Math.max(0,g.invuln-dt);g.slow=Math.max(0,g.slow-dt);g.boost=Math.max(0,g.boost-dt);g.shake=Math.max(0,g.shake-dt*12);
+  if(g.jumpBuffer>0&&(g.grounded||g.coyote>0)){g.vy=-CONFIG.JUMP;g.grounded=false;g.coyote=0;g.jumpBuffer=0;gameSound('jump')}
+  g.vy+=CONFIG.GRAVITY*dt;g.playerY+=g.vy*dt;if(g.playerY>=115){if(!g.grounded&&g.vy>60){g.particles.push({x:65,y:136,color:'#fff3c1'});gameSound('collect')}g.playerY=115;g.vy=0;g.grounded=true}
+  const baseSpeed=Math.min(CONFIG.MAX_SPEED,CONFIG.SPEED+g.score*CONFIG.SPEED_RAMP),pace=baseSpeed*(g.slow?CONFIG.HIT_SLOW:1)*(g.boost?1.28:1);g.world+=(pace-CONFIG.SPEED)*dt;g.gap=Math.max(18,Math.min(145,g.gap-(pace-60)*dt*.1));
+  g.spawn-=dt;if(g.spawn<=0){let types=['burger','cup','box','book','pot'];if(st.scene==='aluva')types=['burger','burger','cup','box'];else if(st.scene==='edappally')types=['train','book','cup','box'];else if(st.scene==='cafe')types=['cup','cup','burger','book'];else if(st.scene==='mall')types=['guard','box','book','cup'];else if(st.scene==='ikea')types=['box','box','book','cup'];else if(st.scene==='pista'||st.scene==='kfc')types=['pot','burger','cup','box'];const type=types[Math.floor(Math.random()*types.length)],h=type==='train'?27:type==='guard'?25:type==='book'?24:22;g.obstacles.push({x:338,type,h});const ramp=Math.min(CONFIG.OBSTACLE_RAMP,g.score*.001);g.spawn=Math.max(CONFIG.OBSTACLE_MIN,CONFIG.OBSTACLE_MAX-ramp)+Math.random()*.45}
+  g.pickupTimer-=dt;if(g.pickupTimer<=0){const kinds=['heart','mango','crown'];let kind=kinds[Math.floor(Math.random()*kinds.length)],label='';if((st.food||st.scene==='ikea')&&Math.random()<.45){kind='snack';label=CONFIG.FOODS[g.foodCount%CONFIG.FOODS.length]}g.pickups.push({x:338,y:88+Math.random()*18,kind,label});g.pickupTimer=CONFIG.PICKUP_RATE+Math.random()*1.3}
+  for(const o of g.obstacles)o.x-=pace*dt;g.obstacles=g.obstacles.filter(o=>o.x>-44);for(const p of g.pickups)p.x-=pace*dt;g.pickups=g.pickups.filter(p=>p.x>-16);
+  for(const o of g.obstacles){if(Math.abs(o.x-72)<11&&g.playerY+20>135-o.h){o.x=-99;hitRunner()}}
+  for(const p of g.pickups){if(Math.abs(p.x-70)<10&&Math.abs(p.y-(g.playerY+9))<23){p.x=-99;gameSound('collect');if(p.kind==='heart')g.lives=Math.min(CONFIG.LIVES,g.lives+1);else if(p.kind==='mango')g.gap=Math.max(18,g.gap-13);else if(p.kind==='snack'){g.foodCount++;g.slow=Math.max(g.slow,.8);$('#runnerStatus').textContent='A little '+p.label+' break. The run slows down for a moment.';if(g.foodCount>=4){g.foodCount=0;g.lives=Math.max(1,g.lives-1);g.invuln=CONFIG.INVULN;$('#runnerStatus').textContent='Four treats? Adheeb caught up for a second 😄'}}else g.boost=3;updateHUD()}}
+  g.particles=g.particles.filter(p=>p.x<320);for(const p of g.particles){p.x-=42*dt;p.y-=18*dt}if(g.frame%30===0)updateHUD()}
+function togglePause(){if(!RG)return;if(RG.state==='running')RG.state='paused';else if(RG.state==='paused'){RG.state='running';RG.last=performance.now();RG.acc=0}drawRunner(RG)}
+
+async function render(){
+  if (tab !== 'quiz' && RG?.raf){ cancelAnimationFrame(RG.raf); clearInterval(MUSIC_TIMER); RG = null; }
+  $('#sheet')?.remove();
+  const h = await V[tab]();
+  app.innerHTML = `<div id="view">${h}</div><p class="small">${admin ? '🔧 Admin mode · <a href="#" data-logout>log out</a>' : 'made with love 💖'}</p>
+    <nav>${TABS.map(([k, e, l]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}"><i>${e}</i>${l}</button>`).join('')}</nav>`;
+  [...$('#view').children].forEach((c, i) => c.style.setProperty('--i', i));
+  document.querySelectorAll('#view .card').forEach((c, i) => c.insertAdjacentHTML('beforeend', dd(['heart','star','bow'][i % 3], ['#ff4f8b','#ffb703','#a56bff'][i % 3], '', 1 + i * .15, 'f corner')));
+  if (tab === 'quiz') window.initRunner();
+  if (tab === 'note') typeNote();
+  scrollTo({ top: 0, behavior: 'smooth' });
 }
-function drawPixel(c,sprite,x,y,palette,frame){const cell=5, step=Math.floor(frame/7)%2;for(let r=0;r<sprite.length;r++)for(let col=0;col<8;col++){let ch=sprite[r][col];if(ch==='.')continue;let dx=x+col*cell;if(r>=8&&step)dx+=col<4?-3:3;c.fillStyle=palette[ch]||'#fff';c.fillRect(dx,y+r*cell,cell,cell)}}
-function startRunner(){if(!RG)return;RG.state='running';RG.score=0;RG.distance=0;RG.playerY=RG.ground-50;RG.vy=0;RG.grounded=true;RG.obstacles=[];RG.mangoes=[];RG.foods=[];RG.foodEaten=0;RG.ducking=false;RG.catchReason='';RG.spawn=1.15;RG.mangoSpawn=2.1;RG.foodSpawn=2.8;RG.last=performance.now();RG.frame=0;RG.chaserX=70;$('#runnerScore').textContent='0';$('#runnerFood').textContent='0';$('#runnerStatus').textContent='Go, Miyadha! Adheeb is right behind you.';$('#runnerStart').hidden=true;$('#runnerAgain').hidden=true;runnerLoop(RG.last)}
-function jumpRunner(){if(!RG)return;if(RG.state==='ready')startRunner();if(RG.state!=='running'||!RG.grounded)return;RG.vy=-620;RG.grounded=false;SFX.jump()}
-function duckRunner(){if(!RG)return;if(RG.state==='ready')startRunner();if(RG.state!=='running')return;RG.ducking=true;SFX.duck();clearTimeout(RG.duckTimer);RG.duckTimer=setTimeout(()=>{if(RG)RG.ducking=false},650)}
-function runnerLoop(now){
-  const g=RG; if(!g||!g.canvas.isConnected)return; const dt=Math.min(.035,(now-g.last)/1000); g.last=now; g.frame++;
-  if(g.state==='catching'){
-    g.chaserX=Math.min(116,g.chaserX+220*dt);
-    if(g.chaserX>=116){g.state='caught';$('#runnerStatus').textContent=g.catchReason==='food'?'Adheeb caught a very full Miyadha! Mwah 💋':'Adheeb caught Miyadha! Mwah 💋';$('#runnerAgain').hidden=false;SFX.kiss()}
-    drawRunner(g); if(g.state==='catching')g.raf=requestAnimationFrame(runnerLoop); return;
-  }
-  if(g.state!=='running'){drawRunner(g);return}
-  const baseSpeed=270+Math.min(170,g.score*1.1), speed=baseSpeed*Math.max(.55,1-g.foodEaten*.12); g.distance+=speed*dt; g.score=Math.floor(g.distance/12); g.spawn-=dt;g.mangoSpawn-=dt;g.foodSpawn-=dt;
-  g.vy+=1750*dt; g.playerY+=g.vy*dt; if(g.playerY>=g.ground-50){g.playerY=g.ground-50;g.vy=0;g.grounded=true}
-  if(g.spawn<=0){const h=30+Math.random()*17;g.obstacles.push({x:735,h,type:Math.floor(Math.random()*4)});g.spawn=1.4+Math.random()*.7-Math.min(.28,g.score/1100)}
-  if(g.mangoSpawn<=0){g.mangoes.push({x:740,y:g.ground-42+Math.random()*7});g.mangoSpawn=2.2+Math.random()*1.4;SFX.whoosh()}
-  if(g.foodSpawn<=0&&g.foodEaten<4){const item=GAME_FOOD[Math.floor(Math.random()*GAME_FOOD.length)];g.foods.push({x:740,y:g.ground-58-Math.random()*14,...item});g.foodSpawn=2.8+Math.random()*1.7}
-  for(const o of g.obstacles)o.x-=speed*dt; g.obstacles=g.obstacles.filter(o=>o.x>-45);
-  for(const m of g.mangoes)m.x-=(speed+115)*dt;g.mangoes=g.mangoes.filter(m=>m.x>-50);
-  for(const f of g.foods)f.x-=speed*dt;g.foods=g.foods.filter(f=>f.x>-50);
-  g.chaserX=70+Math.sin(g.frame*.11)*3;
-  for(const o of g.obstacles){if(183>o.x+4&&150<o.x+31&&!g.ducking&&g.playerY+48>g.ground-o.h+5){g.state='catching';g.catchReason='obstacle';$('#runnerStatus').textContent='Oops, Adheeb is catching up!';break}}
-  for(const m of g.mangoes){if(g.state!=='running')break;if(174>m.x&&153<m.x+24&&g.playerY+40>m.y-6){if(!g.ducking){g.state='catching';g.catchReason='mango';$('#runnerStatus').textContent='The mango got her! Adheeb is catching up.'}else m.x=-60}}
-  for(const f of g.foods){if(174>f.x&&153<f.x+25&&g.playerY+48>f.y-10){f.x=-60;g.foodEaten++;$('#runnerFood').textContent=String(g.foodEaten);$('#runnerStatus').textContent=g.foodEaten>=4?'That was one snack too many!':'A '+f.name+' break. The run feels a little easier now.';SFX.eat();if(g.foodEaten>=4){g.state='catching';g.catchReason='food'} }}
-  if(g.frame%18===0)SFX.run();$('#runnerScore').textContent=String(g.score); drawRunner(g); if(g.state==='running'||g.state==='catching')g.raf=requestAnimationFrame(runnerLoop);
+function welcome(){
+  const ph = ORD.slice(0, 5), fx = [['🎈','top:-6px;left:-26px'],['💖','top:10px;right:-28px;animation-delay:.4s'],['✨','bottom:6px;left:-28px;animation-delay:.8s'],['🧁','bottom:-4px;right:-24px;animation-delay:1.2s']];
+const cake = '<svg class="cakesvg" viewBox="0 0 240 240" role="img" aria-label="A pink and cream three-tier birthday cake" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="berry" x1="0" x2="1"><stop stop-color="#ffc1d9"/><stop offset=".5" stop-color="#f36b9c"/><stop offset="1" stop-color="#aa2f61"/></linearGradient><linearGradient id="cream" x1="0" x2="1"><stop stop-color="#fff7dc"/><stop offset=".55" stop-color="#ffe7a1"/><stop offset="1" stop-color="#dfa14c"/></linearGradient><linearGradient id="frost" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fffafd"/><stop offset="1" stop-color="#ff9cbe"/></linearGradient><linearGradient id="plate" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#db8eae"/></linearGradient><radialGradient id="flame"><stop stop-color="#fff9bd"/><stop offset=".55" stop-color="#ffd166"/><stop offset="1" stop-color="#ff873b"/></radialGradient></defs><ellipse cx="120" cy="220" rx="96" ry="13" fill="#63344b" opacity=".22"/><ellipse cx="120" cy="208" rx="94" ry="18" fill="url(#plate)" stroke="#fff" stroke-width="4"/><path d="M43 145c0-13 34-23 77-23s77 10 77 23v47c0 14-34 25-77 25s-77-11-77-25z" fill="url(#berry)" stroke="#c84779" stroke-width="3"/><ellipse cx="120" cy="145" rx="77" ry="23" fill="url(#cream)" stroke="#fff5d8" stroke-width="3"/><path d="M45 146c10 8 17 8 24 0s12-6 17 2 13 8 18 0 12-8 18 0 12 8 19 0 13-7 19 0 13 7 20-2v15c-8 7-14 7-21 0s-12-6-18 1-14 8-21 0-12-8-18 0-16 8-22 0-11-8-18-1-12 6-17 2z" fill="#fff0c5"/><path d="M64 94c0-10 25-18 56-18s56 8 56 18v40c0 11-25 20-56 20s-56-9-56-20z" fill="url(#berry)" stroke="#c84779" stroke-width="3"/><ellipse cx="120" cy="94" rx="56" ry="18" fill="url(#frost)" stroke="#fff" stroke-width="3"/><path d="M65 96c8 7 14 6 19 0s10-5 14 1 11 7 15 0 10-7 15 0 10 7 15 0 10-6 17 0v12c-7 6-13 6-18-1s-10-6-15 1-12 7-17 0-10-7-14 0-12 8-18 0-8-6-13-2z" fill="#fff8fa"/><ellipse cx="120" cy="139" rx="53" ry="14" fill="none" stroke="#ffd166" stroke-width="5"/><g fill="#fff"><circle cx="78" cy="119" r="3"/><circle cx="95" cy="132" r="2.5"/><circle cx="145" cy="116" r="3"/><circle cx="162" cy="130" r="2.5"/><circle cx="92" cy="172" r="3"/><circle cx="151" cy="182" r="3"/><circle cx="121" cy="188" r="2.5"/></g><g><rect x="83" y="49" width="10" height="35" rx="4" fill="#fff3bb" stroke="#d89b52" stroke-width="2"/><rect x="115" y="39" width="10" height="39" rx="4" fill="#fff3bb" stroke="#d89b52" stroke-width="2"/><rect x="147" y="49" width="10" height="35" rx="4" fill="#fff3bb" stroke="#d89b52" stroke-width="2"/><path class="fl" d="M88 48c-12-13 1-21 0-31 14 12 14 23 0 31z" fill="url(#flame)"/><path class="fl" d="M120 38c-12-13 1-23 0-34 14 13 14 26 0 34z" fill="url(#flame)"/><path class="fl" d="M152 48c-12-13 1-21 0-31 14 12 14 23 0 31z" fill="url(#flame)"/></g><path d="M56 104c2-8 5-13 10-17M51 169c2-8 4-11 7-14" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".7"/></svg>';
+  app.innerHTML = `<div class="hero"><div class="ttl"><small>Happy</small><b>Birthday</b></div>${S.name ? `<div class="ban">${esc(S.name)} 💖</div>` : ''}
+    <div class="frame"><div class="bow">🎀</div>${fx.map(([e, st]) => `<span class="fx" style="${st}">${e}</span>`).join('')}<div class="ph">${ph.map((i, k) => `<img class="${k ? '' : 'on'}" src="${PH[i]}" alt="">`).join('')}</div></div>
+    <div class="cake">${cake}</div>
+    <p class="sub">Your birthday surprise is ready 🎁</p><button class="big" id="start">Blow the candles 🕯️</button></div>`;
+  let k = 0; clearInterval(W);
+  W = setInterval(() => { const im = [...document.querySelectorAll('.frame img')]; if (!im.length) return clearInterval(W); im[k].classList.remove('on'); k = (k + 1) % im.length; im[k].classList.add('on'); }, 2600);
 }
+
 
 /* ---------- Events ---------- */
 document.addEventListener('click', async e => {
   const t = e.target.closest('button,a,div.map,[data-lb],[data-egg],#lb,#jarE,canvas#runnerCanvas'); if (!t) return;
   const d = t.dataset;
-  if (t.id === 'runnerStart' || t.id === 'runnerAgain'){ startRunner(); return; }
-  if (t.id === 'runnerJump' || t.id === 'runnerCanvas'){ jumpRunner(); return; }
-  if (t.id === 'runnerDuck'){ duckRunner(); return; }
+  if(d.storyEdit){const ar=document.querySelector('.chapter'),title=prompt('Story title:',ar?.querySelector('.chapter-title')?.textContent||''),text=prompt('Story text:',ar?.querySelector('.chapter-copy')?.textContent||'');if(title!==null&&text!==null){try{await saveStoryEdit(d.storyEdit,{title,text});render()}catch(x){alert('Could not save story: '+x.message)}}return;}
+  if(d.photoCaption!==undefined){const fig=t.closest('figure'),caption=prompt('Photo caption:',fig?.querySelector('figcaption b')?.textContent||'');if(caption!==null){try{await savePhotoEdit(d.photoCaption,{caption});await render()}catch(x){alert('Could not save caption: '+x.message)}}return;}
+  if(d.storyCaption){const ar=document.querySelector('.chapter'),caption=prompt('Photo caption:',ar?.querySelector('.story-photo-caption')?.textContent||'');if(caption!==null){try{await saveStoryEdit(d.storyCaption,{photoCaption:caption});render()}catch(x){alert('Could not save caption: '+x.message)}}return;}
+  if (t.id === 'runnerStart'){ window.beginRunner(); return; }
+  if (t.id === 'runnerAgain'){ window.retryStage(); return; }
+    if (t.id === 'runnerPause'){ window.togglePause();t.textContent=RG?.state==='paused'?'Resume':'Pause';return; }
+  if (t.id === 'runnerMute'){ MUTED=!MUTED;t.textContent=MUTED?'Sound off':'Sound on';return; }
+  if (t.id === 'runnerJump'){ window.jumpRunner(); return; }
   if (t.id === 'lb') return t.remove();
   if (d.egg){ const r = t.getBoundingClientRect(); for (let i = 0; i < 6; i++) setTimeout(() => sparkle(r.x + r.width / 2 + rand(-40, 40), r.y, '👑'), i * 90); SFX.ding(); t.textContent = '👑👑👑 three crowns'; setTimeout(() => t.textContent = '👑 Clash Royale nights', 2200); return; }
-  if (d.lb !== undefined){ S._lb = +d.lb; return document.body.insertAdjacentHTML('beforeend', `<div id="lb"><button class="lbn" data-lbn="-1">‹</button><img src="${PH[S._lb]}"><div class="cp">${CAP[S._lb]}</div><button class="lbn r" data-lbn="1">›</button></div>`); }
-  if (d.lbn !== undefined){ S._lb = ORD[(ORD.indexOf(S._lb) + +d.lbn + ORD.length) % ORD.length]; $('#lb img').src = PH[S._lb]; $('#lb .cp').textContent = CAP[S._lb]; return SFX.flip(); }
+  if (d.lb !== undefined){ S._lb = +d.lb; return document.body.insertAdjacentHTML('beforeend', `<div id="lb"><button class="lbn" data-lbn="-1">‹</button><img src="${(S.photoEdits||{})[S._lb]?.url || PH[S._lb]}"><div class="cp">${esc((S.photoEdits||{})[S._lb]?.caption || CAP[S._lb])}</div><button class="lbn r" data-lbn="1">›</button></div>`); }
+  if (d.lbn !== undefined){ S._lb = ORD[(ORD.indexOf(S._lb) + +d.lbn + ORD.length) % ORD.length]; $('#lb img').src = (S.photoEdits||{})[S._lb]?.url || PH[S._lb]; $('#lb .cp').textContent = (S.photoEdits||{})[S._lb]?.caption || CAP[S._lb]; return SFX.flip(); }
   if (t.id === 'start'){
     t.disabled = true; t.textContent = '🎶'; document.querySelectorAll('.cakesvg').forEach(c => c.classList.add('out')); SFX.blow();
     if (S.song){ BG = new Audio(S.song); BG.loop = true; BG.volume = 0; BG.muted = muted; BG.play().catch(() => {}); let v = 0; setTimeout(() => { const iv = setInterval(() => { BG.volume = Math.min(1, v += .05); if (v >= 1) clearInterval(iv); }, 150); }, 9000); }
@@ -589,9 +665,11 @@ document.addEventListener('click', async e => {
   }
   if (d.logout !== undefined){ e.preventDefault(); await sb.auth.signOut(); location.hash = ''; location.reload(); }
 });
-document.addEventListener('keydown', e => { if(tab!=='quiz')return; if(['Space','ArrowUp','KeyW'].includes(e.code)){e.preventDefault();if(!e.repeat)jumpRunner()}else if(['ArrowDown','KeyS'].includes(e.code)){e.preventDefault();if(!e.repeat)duckRunner()} });
-document.addEventListener('keyup', e => { if(['ArrowDown','KeyS'].includes(e.code)&&RG)RG.ducking=false; });
+document.addEventListener('keydown',e=>{if(tab==='quiz'&&e.code==='Escape'){e.preventDefault();window.togglePause()}});
 document.addEventListener('change', async e => {
+  if(e.target.dataset.photoFile!==undefined&&e.target.files[0]){try{const url=await upload(e.target.files[0]);await savePhotoEdit(e.target.dataset.photoFile,{url});await render()}catch(x){alert('Could not replace photo: '+x.message)}return;}
+  if(e.target.dataset.memoryPhoto!==undefined&&e.target.files[0]){try{const url=await upload(e.target.files[0]);const {error}=await sb.from('memories').update({url}).eq('id',e.target.dataset.memoryPhoto);if(error)throw error;await render()}catch(x){alert('Could not replace photo: '+x.message)}return;}
+  if(e.target.dataset.storyPhoto!==undefined&&e.target.files[0]){try{const url=await upload(e.target.files[0]);await saveStoryEdit(e.target.dataset.storyPhoto,{photo:url});S._story=e.target.dataset.storyPhoto;await render()}catch(x){alert('Could not upload story photo: '+x.message)}return;}
   if (e.target.dataset.song !== undefined && e.target.files[0]){
     try { const u = await upload(e.target.files[0]); await sb.from('settings').upsert({ key: 'song', value: u }); S.song = u; alert('Song saved 🎵'); } catch (x) { alert(x.message); }
   }
@@ -623,5 +701,327 @@ document.addEventListener('submit', async e => {
   admin ? render() : welcome();
 })();
 </script>
-</body>
-</html>
+<script>
+/* pasted endless lane runner integrated */
+/* game.js: a simple endless lane runner (Subway-Surfers style).
+   Loaded AFTER the main script in index.html. It replaces the old Game tab:
+   Miyadha chases Adheeb. Swipe left/right to change lane, up to jump, down to roll.
+   Collect hearts and mangoes to close the gap. Hit obstacles and she pulls ahead. */
+(() => {
+'use strict';
+const W = 320, H = 180, HY = 44, PZ = .86, LS = 74, N = 12, STEP = 1 / 60;
+const PAL = {H:'#35213e',S:'#f0b391',E:'#291a32',P:'#ff4f91',V:'#8c5fd1',L:'#342940',B:'#ffd16c',D:'#342b43',O:'#5b386a'};
+const MIYA = ['..HHHH..','.HHHHHH.','.HSSSSHH','.HSESSHH','..SSSS..','..PPPP..','.PPPPPP.','..VVVV..','.LL..LL.','BB....BB'];
+const ADHE = ['..DDDD..','.DDDDDD.','.DSSSSDD','.DSESSDD','..SSSS..','..BBBB..','.BBBBBB.','..OOOO..','.LL..LL.','BB....BB'];
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const GAME_SPOTS = AT;
+
+const sc = z => .18 + .82 * z;
+const sy = z => HY + (H - HY) * z;
+const sx = (lane, z) => W / 2 + (lane - 1) * LS * sc(z);
+const pxr = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h))); };
+const poly = (c, col, p) => { c.fillStyle = col; c.beginPath(); c.moveTo(p[0][0], p[0][1]); for (let i = 1; i < p.length; i++) c.lineTo(p[i][0], p[i][1]); c.closePath(); c.fill(); };
+const txt = (c, t, x, y, col, size = 8, al = 'center') => { c.fillStyle = col; c.font = 'bold ' + size + 'px monospace'; c.textAlign = al; c.textBaseline = 'middle'; c.fillText(t, x, y); };
+const sfx = n => { if (typeof MUTED !== 'undefined' && MUTED) return; try { SFX[n](); } catch (e) {} };
+const store = {
+  get() { try { return +localStorage.getItem('miyadhaRunnerBest') || 0; } catch (e) { return 0; } },
+  set(v) { try { localStorage.setItem('miyadhaRunnerBest', v); } catch (e) {} }
+};
+const setStatus = t => { const e = document.querySelector('#runnerStatus'); if (e) e.textContent = t; };
+
+const fresh = state => ({ state, t: 0, scroll: 0, speed: .42, score: 0, lives: 3, laneF: 1, target: 1, jumpT: -1, rollT: -1,
+  inv: 0, shake: 0, flash: 0, gap: 70, mz: .3, mLane: 1, mTarget: 1, mTimer: 1.5, obs: [], pick: [], dist: 0, spacing: .55,
+  parts: [], acc: 0, fc: 0, catches: 0, best: store.get() });
+
+/* ---------------- input ---------------- */
+function act(k) {
+  const g = RG; if (!g) return;
+  if (g.state === 'title' || g.state === 'over') { if (k === 'jump') begin(); return; }
+  if (g.state !== 'running') return;
+  if (k === 'left') g.target = Math.max(0, g.target - 1);
+  else if (k === 'right') g.target = Math.min(2, g.target + 1);
+  else if (k === 'jump' && g.jumpT < 0) { g.jumpT = 0; g.rollT = -1; sfx('jump'); }
+  else if (k === 'roll' && g.rollT < 0) { g.rollT = 0; if (g.jumpT >= 0) g.jumpT = Math.max(g.jumpT, .75); sfx('duck'); }
+}
+let lastJump = 0;
+window.jumpRunner = () => { const n = performance.now(); if (n - lastJump < 140) return; lastJump = n; act('jump'); };
+window.duckRunner = () => act('roll');
+window.releaseJump = () => {};
+window.togglePause = () => {
+  const g = RG; if (!g) return;
+  if (g.state === 'running') g.state = 'paused';
+  else if (g.state === 'paused') { g.state = 'running'; g.last = performance.now(); g.acc = 0; }
+};
+
+function bind(canvas) {
+  let id = null, x0 = 0, y0 = 0;
+  canvas.addEventListener('pointerdown', e => { e.stopPropagation(); id = e.pointerId; x0 = e.clientX; y0 = e.clientY; try { canvas.setPointerCapture(id); } catch (_) {} });
+  canvas.addEventListener('pointermove', e => {
+    if (id !== e.pointerId) return;
+    const dx = e.clientX - x0, dy = e.clientY - y0;
+    if (Math.hypot(dx, dy) > 26) { id = null; if (Math.abs(dx) > Math.abs(dy)) act(dx < 0 ? 'left' : 'right'); else act(dy < 0 ? 'jump' : 'roll'); }
+  });
+  canvas.addEventListener('pointerup', e => { e.stopPropagation(); if (id === e.pointerId) { id = null; act('jump'); } });
+  canvas.addEventListener('pointercancel', () => { id = null; });
+  canvas.addEventListener('click', e => e.stopPropagation());
+  [['runnerLeft', 'left'], ['runnerRight', 'right'], ['runnerRoll', 'roll'], ['runnerJump', 'jump']].forEach(([i, k]) => {
+    const b = document.getElementById(i); if (!b) return;
+    b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); act(k); });
+    b.addEventListener('click', e => { e.stopPropagation(); if (e.detail === 0) act(k); });
+  });
+}
+addEventListener('keydown', e => {
+  if (typeof tab === 'undefined' || tab !== 'quiz' || !RG) return;
+  const m = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowDown: 'roll', KeyS: 'roll', ArrowUp: 'jump', KeyW: 'jump', Space: 'jump' }[e.code];
+  if (m) { e.preventDefault(); if (!e.repeat) act(m); }
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && RG && RG.state === 'running') { RG.state = 'paused'; const b = document.querySelector('#runnerPause'); if (b) b.textContent = 'Resume'; }
+});
+
+/* ---------------- game flow ---------------- */
+function begin() {
+  const g = RG; if (!g) return;
+  const keep = { canvas: g.canvas, c: g.c, raf: g.raf };
+  Object.assign(g, fresh('running'), keep);
+  g.last = performance.now();
+  setStatus('Go, Miyadha! Catch Adheeb 💗');
+  const p = document.querySelector('#runnerPause'); if (p) p.textContent = 'Pause';
+  hud(g);
+}
+window.beginRunner = begin;
+window.retryStage = begin;
+window.runnerFrame = () => {};
+
+function init() {
+  const canvas = document.querySelector('#runnerCanvas'); if (!canvas) return;
+  if (RG && RG.raf) cancelAnimationFrame(RG.raf);
+  const g = Object.assign(fresh('title'), { canvas, c: canvas.getContext('2d'), raf: 0, last: performance.now() });
+  g.c.imageSmoothingEnabled = false;
+  RG = g;
+  bind(canvas);
+  const loop = now => { if (RG !== g || !canvas.isConnected) return; g.raf = requestAnimationFrame(loop); frame(g, now); };
+  g.raf = requestAnimationFrame(loop);
+  hud(g);
+}
+window.initRunner = init;
+
+function hud(g) {
+  const st = document.querySelector('#runnerStage'); if (!st) return;
+  st.textContent = g.state === 'title' ? 'Ready?' : 'Score ' + Math.floor(g.score);
+  document.querySelector('#runnerLives').textContent = '♥'.repeat(Math.max(0, g.lives)) + '♡'.repeat(Math.max(0, 3 - g.lives));
+  document.querySelector('#runnerProgress').style.width = Math.round(100 - g.gap) + '%';
+  const on = (s, show) => { const e = document.querySelector(s); if (e) e.hidden = !show; };
+  on('#runnerStart', g.state === 'title'); on('#runnerAgain', g.state === 'over');
+  const p = document.querySelector('#runnerPause'); if (p) p.disabled = !(g.state === 'running' || g.state === 'paused');
+}
+
+function frame(g, now) {
+  const dt = Math.min(.1, Math.max(0, (now - g.last) / 1000)); g.last = now;
+  if (g.state === 'running') {
+    g.acc += dt;
+    while (g.acc >= STEP) { update(g, STEP); g.acc -= STEP; if (g.state !== 'running') break; }
+  } else if (g.state !== 'paused') g.scroll += dt * 3;
+  draw(g);
+  if (++g.fc % 8 === 0) hud(g);
+}
+
+/* ---------------- rules ---------------- */
+function spawn(g) {
+  const R = Math.random(), L = [0, 1, 2], pk = a => a[Math.floor(Math.random() * a.length)];
+  const free = pk(L); let extra = 0;
+  if (R < .2) { L.forEach(l => g.obs.push({ lane: l, z: 0, type: 'low' })); extra = .22; }
+  else if (R < .32) { L.forEach(l => g.obs.push({ lane: l, z: 0, type: 'high' })); extra = .22; }
+  else if (R < .78) {
+    const blocked = L.filter(l => l !== free && Math.random() < .7);
+    if (!blocked.length) blocked.push(L.find(l => l !== free));
+    blocked.forEach(l => g.obs.push({ lane: l, z: 0, type: 'tall' }));
+  } else g.obs.push({ lane: pk(L), z: 0, type: Math.random() < .5 ? 'low' : 'tall' });
+  if (Math.random() < .65) {
+    const mango = Math.random() < .18;
+    for (let i = 0; i < (mango ? 1 : 3); i++) g.pick.push({ lane: free, z: -.05 - i * .075, kind: mango ? 'mango' : 'heart' });
+  }
+  g.spacing = Math.max(.5, .64 - g.t * .0015) + extra;
+}
+function burstParts(g, x, y, n, ch) {
+  for (let i = 0; i < n; i++) g.parts.push({ x, y, vx: (Math.random() - .5) * 90, vy: -20 - Math.random() * 70, life: .8, ch });
+}
+function hit(g) {
+  g.lives--; g.inv = 1.4; g.shake = reduced ? 0 : 1; g.gap = Math.min(100, g.gap + 20); g.t = Math.max(0, g.t - 4);
+  sfx('bad'); setStatus('Oops! Adheeb got a little farther ahead 😅');
+  if (g.lives <= 0) {
+    g.state = 'over';
+    if (g.score > g.best) { g.best = Math.floor(g.score); store.set(g.best); }
+    setStatus('Adheeb got away! Tap Run again 💗'); hud(g);
+  }
+}
+function update(g, dt) {
+  g.t += dt; g.speed = Math.min(.8, .42 + g.t * .006);
+  g.scroll += g.speed * dt * N; g.score += g.speed * dt * 40;
+  const d = g.target - g.laneF; g.laneF += Math.sign(d) * Math.min(Math.abs(d), 9 * dt);
+  if (g.jumpT >= 0) { g.jumpT += dt / .62; if (g.jumpT >= 1) g.jumpT = -1; }
+  if (g.rollT >= 0) { g.rollT += dt / .55; if (g.rollT >= 1) g.rollT = -1; }
+  g.inv = Math.max(0, g.inv - dt); g.shake = Math.max(0, g.shake - dt * 3); g.flash = Math.max(0, g.flash - dt);
+  g.dist += g.speed * dt; if (g.dist >= g.spacing) { g.dist = 0; spawn(g); }
+  for (const o of g.obs) o.z += g.speed * dt;
+  for (const p of g.pick) p.z += g.speed * dt;
+  g.obs = g.obs.filter(o => o.z < 1.15); g.pick = g.pick.filter(p => p.z < 1.15 && !p.got);
+  const air = g.jumpT >= 0 && Math.sin(Math.PI * g.jumpT) > .45, rolling = g.rollT >= 0 && g.rollT < .9;
+  for (const o of g.obs) {
+    if (o.hit || Math.abs(o.z - PZ) > .045 || Math.abs(g.laneF - o.lane) > .6) continue;
+    const safe = (o.type === 'low' && air) || (o.type === 'high' && rolling);
+    if (!safe && g.inv <= 0) { o.hit = true; hit(g); if (g.state !== 'running') return; }
+  }
+  const px = sx(g.laneF, PZ), py = sy(PZ) - 20;
+  for (const p of g.pick) {
+    if (p.z <= 0 || Math.abs(p.z - PZ) > .055 || Math.abs(g.laneF - p.lane) > .6) continue;
+    p.got = true; sfx('eat');
+    if (p.kind === 'mango') { g.score += 30; g.gap = Math.max(0, g.gap - 12); } else { g.score += 10; g.gap = Math.max(0, g.gap - 4); }
+    burstParts(g, px, py, 5, p.kind === 'mango' ? '🥭' : '💗');
+    if (g.gap <= 0) {
+      g.gap = 80; g.catches++; g.score += 100; g.flash = 1.8; sfx('fanfare');
+      burstParts(g, W / 2, 80, 16, '💖'); setStatus('Miyadha caught Adheeb! He’s already running again 💗');
+    }
+  }
+  g.mTimer -= dt;
+  if (g.mTimer <= 0) { g.mTarget = Math.floor(Math.random() * 3); g.mTimer = 1.2 + Math.random() * 1.8; }
+  const md = g.mTarget - g.mLane; g.mLane += Math.sign(md) * Math.min(Math.abs(md), 3.5 * dt);
+  g.gap = Math.min(100, g.gap + 1.3 * dt);
+  g.mz += ((.14 + (100 - g.gap) / 100 * .5) - g.mz) * Math.min(1, 4 * dt);
+  for (const q of g.parts) { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 120 * dt; q.life -= dt; }
+  g.parts = g.parts.filter(q => q.life > 0);
+}
+
+/* ---------------- drawing ---------------- */
+function sprite(c, art, cx, by, cs, squash, step) {
+  const h = art.length * cs * squash;
+  for (let r = 0; r < art.length; r++) for (let k = 0; k < 8; k++) {
+    const ch = art[r][k]; if (ch === '.') continue;
+    const dx = r > 7 ? (k < 4 ? -step : step) * cs * .5 : 0;
+    pxr(c, cx + (k - 4) * cs + dx, by - h + r * cs * squash, cs + .7, cs * squash + .7, PAL[ch]);
+  }
+}
+function shadow(c, x, y, s) { c.fillStyle = 'rgba(60,30,60,.28)'; c.beginPath(); c.ellipse(x, y, 11 * s, 3.5 * s, 0, 0, 7); c.fill(); }
+function drawObs(c, o) {
+  const s = sc(o.z), x = sx(o.lane, o.z), y = sy(o.z);
+  if (o.type === 'low') {
+    const w = 50 * s;
+    pxr(c, x - w / 2, y - 5 * s, w, 5 * s, '#e8b267'); pxr(c, x - w / 2 + s, y - 9 * s, w - 2 * s, 4 * s, '#7b3f2e');
+    pxr(c, x - w / 2 - s, y - 12 * s, w + 2 * s, 3 * s, '#78a95e'); pxr(c, x - w / 2 + 3 * s, y - 19 * s, w - 6 * s, 7 * s, '#d58a43');
+    pxr(c, x - 8 * s, y - 17 * s, 2 * s, s, '#fff2ce'); pxr(c, x + 5 * s, y - 16 * s, 2 * s, s, '#fff2ce');
+  } else if (o.type === 'tall') {
+    const w = 50 * s, h = 44 * s;
+    pxr(c, x - w / 2, y - h, w, h, '#eaf5f6'); pxr(c, x - w / 2, y - h, w, 7 * s, '#e95b70');
+    pxr(c, x - w / 2 + 6 * s, y - h + 12 * s, 14 * s, 11 * s, '#61b4d2'); pxr(c, x + w / 2 - 20 * s, y - h + 12 * s, 14 * s, 11 * s, '#61b4d2');
+    pxr(c, x - w / 2, y - 6 * s, w, 6 * s, '#47536e');
+  } else {
+    const w = 62 * s;
+    pxr(c, x - w / 2, y - 38 * s, 4 * s, 38 * s, '#8a6d5a'); pxr(c, x + w / 2 - 4 * s, y - 38 * s, 4 * s, 38 * s, '#8a6d5a');
+    pxr(c, x - w / 2, y - 38 * s, w, 10 * s, '#ff7aa8'); pxr(c, x - w / 2 + 4 * s, y - 35 * s, w - 8 * s, 2 * s, '#fff');
+  }
+}
+function drawPick(c, p, g) {
+  const s = sc(p.z), x = sx(p.lane, p.z), y = sy(p.z) - 14 * s - Math.sin(g.t * 6 + p.z * 20) * 3 * s;
+  c.font = Math.round(19 * s) + 'px serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(p.kind === 'mango' ? '🥭' : '💗', x, y);
+}
+function drawPlace(c, spot, side, z) {
+  const s=sc(z), half=1.55*LS*s, x=W/2+side*(half+40*s+10), y=sy(z), w=Math.max(15,30*s), h=Math.max(12,22*s), id=spot.id;
+  const colors={per:'#d28b68',stp:'#ecd480',opt:'#e8bf6c',alu:'#64b4d3',elo:'#bc8c6c',met:'#73bdd7',obe:'#8d7bc1',fwd:'#d78a78',vis:'#9c8ac1',nif:'#a98fc4',uds:'#8277a7',ike:'#327ac2',pis:'#ad6550',kfc:'#d74c55',hin:'#cf5990'};
+  const roof=colors[id]||'#bd83ae',body=id==='kfc'?'#fff2e4':id==='ike'?'#e8f1ff':id==='met'||id==='alu'?'#e4f5f6':'#fff0dc';
+  if(id==='per'||id==='elo'){poly(c,roof,[[x-w*.58,y-h*.52],[x,y-h],[x+w*.58,y-h*.52]]);pxr(c,x-w*.48,y-h*.53,w*.96,h*.53,body);pxr(c,x-w*.13,y-h*.4,w*.26,h*.4,'#875a70')}
+  else {pxr(c,x-w/2,y-h,w,h,body);pxr(c,x-w/2-1*s,y-h,w+2*s,5*s,roof);
+    if(id==='stp'||id==='nif'){for(let q=-1;q<=1;q++)pxr(c,x+q*7*s-1*s,y-h+6*s,2*s,h-7*s,'#b389aa');pxr(c,x,y-h-7*s,2*s,7*s,'#70578c');pxr(c,x+2*s,y-h-7*s,6*s,3*s,'#ed5d83')}
+    else if(id==='alu'||id==='met'){pxr(c,x-w*.55,y-h*.5,w*1.1,2*s,'#5388a3');pxr(c,x-w*.65,y-h*.4,w*1.3,2*s,'#5388a3');if(id==='met'){pxr(c,x-w*.45,y-h*.34,w*.9,6*s,'#6ab4cf');pxr(c,x-w*.4,y-h*.3,4*s,4*s,'#fff')}}
+    else if(id==='fwd'){for(let q=0;q<4;q++)pxr(c,x-w/2+q*w/4,y-h+5*s,w/4,4*s,q%2?'#fff0dc':'#e96d91');pxr(c,x-w*.35,y-h*.38,w*.7,2*s,'#956277')}
+    else if(id==='vis'){pxr(c,x-w*.42,y-h-8*s,w*.25,8*s,'#7a78ae');pxr(c,x-w*.08,y-h-12*s,w*.25,12*s,'#9685bc');pxr(c,x+w*.25,y-h-6*s,w*.2,6*s,'#786caa')}
+    else if(id==='ike'){pxr(c,x-w*.42,y-h*.65,w*.84,5*s,'#f3d64e');pxr(c,x-w*.35,y-h*.38,w*.7,3*s,'#e9c84b')}
+    else if(id==='obe'||id==='uds'){for(let q=0;q<3;q++)pxr(c,x-w*.38+q*8*s,y-h*.68,4*s,5*s,'#f4d487');pxr(c,x-w*.38,y-h*.28,w*.76,2*s,'#877ca8')}
+    else if(id==='opt'||id==='kfc'||id==='pis'){pxr(c,x-w*.4,y-h*.62,w*.8,6*s,id==='kfc'?'#d84b50':id==='pis'?'#bd8650':'#fff6df');pxr(c,x-w*.08,y-h*.35,w*.16,h*.35,'#9b6b5d')}
+    else if(id==='hin'){pxr(c,x-w*.22,y-h-5*s,w*.44,8*s,'#4d3855');pxr(c,x-w*.16,y-h-3*s,w*.32,5*s,'#ffeaf3');pxr(c,x-w*.03,y-h-2*s,2*s,2*s,'#ee5d94')}
+    else {for(let q=0;q<3;q++)pxr(c,x-w*.36+q*8*s,y-h*.62,4*s,4*s,'#f5d18c')}
+  }
+  const labels={per:'PERUMBA...',stp:'ST PETER',opt:'OPTIONS',alu:'ALUVA',elo:'ELOOR HOME',met:'EDAPPALLY',obe:'OBERON',fwd:'FORWARDS',vis:'HYDERABAD',nif:'NIFT',uds:'23 URBAN',ike:'IKEA',pis:'PISTA HOUSE',kfc:'KFC',hin:'HINGE'},full=labels[id]||spot.sn||spot.n,label=s<.46&&full.length>7?full.slice(0,6):full,bw=Math.max(w,48*s+12),sh=Math.max(10,10*s),by=y-h-sh,signX=side<0?Math.max(bw/2+2,x):Math.min(W-bw/2-2,x);
+  pxr(c,signX-bw/2,by+1,bw,sh,'#fff');pxr(c,signX-bw/2,by+1,3,sh,roof);pxr(c,signX-bw/2,by+sh,bw,2,'#49374b');c.globalAlpha=Math.min(1,.82+s*.18);txt(c,label,signX,by+sh/2,'#30233a',Math.max(5,5.5*s));c.globalAlpha=1;
+}
+
+function drawRoad(g) {
+  const c = g.c;
+  ['#ffd0e6', '#ffd9ea', '#ffe3ef', '#ffeef4'].forEach((col, i) => pxr(c, 0, i * HY / 4, W, HY / 4 + 1, col));
+  c.fillStyle = '#fff3b8'; c.beginPath(); c.arc(256, 24, 12, 0, 7); c.fill();
+  for (let i = 0; i < 4; i++) { const x = (((i * 110 - g.scroll * 6) % 440) + 440) % 440 - 60; pxr(c, x, 10 + i * 7, 34, 7, '#fff'); pxr(c, x + 8, 6 + i * 7, 20, 6, '#fff'); }
+  [['#f3b7d4', 8, 5, 1], ['#e99ac1', 3, 3, 2.2]].forEach(([col, base, amp, ph]) => {
+    c.fillStyle = col; c.beginPath(); c.moveTo(0, HY);
+    for (let x = 0; x <= W; x += 20) c.lineTo(x, HY - base - Math.sin(x * .05 + ph) * amp);
+    c.lineTo(W, HY); c.closePath(); c.fill();
+  });
+  const base = Math.floor(g.scroll), ph = g.scroll - base;
+  for (let k = -1; k < N; k++) {
+    const a = Math.max(0, (k + ph) / N), b = Math.min(1, (k + 1 + ph) / N); if (b <= a) continue;
+    const par = (k + base) & 1, ya = sy(a), yb = sy(b), ha = 1.55 * LS * sc(a), hb = 1.55 * LS * sc(b), wa = 4 * sc(a), wb = 4 * sc(b);
+    pxr(c, 0, ya, W, yb - ya + 1, par ? '#bde7ad' : '#c8edb9');
+    poly(c, par ? '#7f6c92' : '#76648a', [[W / 2 - ha, ya], [W / 2 + ha, ya], [W / 2 + hb, yb], [W / 2 - hb, yb]]);
+    const cc = par ? '#ff5d93' : '#ffffff';
+    poly(c, cc, [[W / 2 - ha - wa, ya], [W / 2 - ha, ya], [W / 2 - hb, yb], [W / 2 - hb - wb, yb]]);
+    poly(c, cc, [[W / 2 + ha, ya], [W / 2 + ha + wa, ya], [W / 2 + hb + wb, yb], [W / 2 + hb, yb]]);
+    if (!par) for (const d of [-.5, .5]) {
+      const xa = W / 2 + d * LS * sc(a), xb = W / 2 + d * LS * sc(b), wda = 1.1 * sc(a), wdb = 1.1 * sc(b);
+      poly(c, 'rgba(255,255,255,.75)', [[xa - wda, ya], [xa + wda, ya], [xb + wdb, yb], [xb - wdb, yb]]);
+    }
+  }
+  const routePos=g.scroll/18,routeBase=Math.floor(routePos),routePhase=routePos-routeBase;
+  for(let i=0;i<6;i++){const spot=GAME_SPOTS[(routeBase+i)%GAME_SPOTS.length],z=.12+(i+routePhase)*.115,side=((routeBase+i)%2)?-1:1;drawPlace(c,spot,side,Math.min(.88,z))}
+  const deco = ['🌴', '🌸', '🏡', '🌳', '🌷', '🌼'];
+  for (let i = 0; i < 6; i++) {
+    const z = ((i + g.scroll / 2) % 6) / 6; if (z < .05) continue;
+    const s = sc(z), off = 1.55 * LS * s + 24 * s;
+    c.font = Math.round(28 * s) + 'px serif'; c.textAlign = 'center'; c.textBaseline = 'bottom';
+    c.fillText(deco[i], W / 2 - off, sy(z)); c.fillText(deco[(i + 3) % 6], W / 2 + off, sy(z));
+  }
+}
+function panel(c, lines, y, h) {
+  pxr(c, 36, y + 3, 248, h, '#49374b'); pxr(c, 32, y, 248, h, '#fff7e8'); pxr(c, 32, y, 3, h, '#ff5793');
+  lines.forEach(([t, col, size], i) => txt(c, t, 156, y + 14 + i * 14, col, size));
+}
+function draw(g) {
+  const c = g.c; c.save();
+  if (g.shake > 0 && !reduced) c.translate(Math.round((Math.random() - .5) * g.shake * 5), 0);
+  drawRoad(g);
+  const ents = [];
+  for (const o of g.obs) if (o.z > 0) ents.push([o.z, () => drawObs(c, o)]);
+  for (const p of g.pick) if (p.z > 0) ents.push([p.z, () => drawPick(c, p, g)]);
+  const step = Math.floor(g.t * 10 + g.scroll) % 2, cm = 3.1 * sc(g.mz);
+  ents.push([g.mz, () => {
+    const x = sx(g.mLane, g.mz), y = sy(g.mz);
+    shadow(c, x, y, sc(g.mz)); sprite(c, ADHE, x, y, cm, 1, step);
+    txt(c, 'Adheeb', x, y - 10 * cm - 2, '#513851', 5);
+  }]);
+  ents.push([PZ, () => {
+    const s = sc(PZ), x = sx(g.laneF, PZ), gy = sy(PZ), jh = g.jumpT >= 0 ? Math.sin(Math.PI * g.jumpT) * 34 : 0;
+    shadow(c, x, gy, s * (1 - jh / 90));
+    if (g.inv > 0 && Math.floor(g.t * 14) % 2 === 0) return;
+    sprite(c, MIYA, x, gy - jh, 3.1 * s, g.rollT >= 0 ? .55 : 1, g.jumpT >= 0 ? 0 : step); txt(c, 'Miyadha', x, gy - jh - 24 * s, '#513851', 6);
+  }]);
+  ents.sort((a, b) => a[0] - b[0]).forEach(e => e[1]());
+  for (const q of g.parts) { c.globalAlpha = Math.max(0, q.life); c.font = '10px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(q.ch, q.x, q.y); }
+  c.globalAlpha = 1;
+  pxr(c, 4, 4, 88, 13, '#fff7e8'); pxr(c, 4, 4, 3, 13, '#ff5793'); txt(c, 'SCORE ' + Math.floor(g.score), 12, 10, '#3d283b', 8, 'left');
+  pxr(c, 252, 4, 64, 13, '#fff7e8'); txt(c, '♥'.repeat(Math.max(0, g.lives)) + '♡'.repeat(Math.max(0, 3 - g.lives)), 284, 10, '#d52e70', 10);
+  if (g.flash > 0) { pxr(c, 62, 24, 196, 20, '#fff7e8'); pxr(c, 62, 24, 3, 20, '#ff5793'); txt(c, 'MIYADHA CAUGHT ADHEEB! 💗', 160, 34, '#cf4380', 8); }
+  if (g.state === 'title') panel(c, [['Help Miyadha catch Adheeb!', '#573448', 9], ['Swipe to dodge, jump and roll', '#65465b', 6], ['He’s getting away! 💗', '#cf4380', 7]], 56, 54);
+  if (g.state === 'paused') panel(c, [['Taking a tiny break', '#573448', 9], ['Tap Resume when ready', '#cf4380', 7]], 62, 44);
+  if (g.state === 'over') panel(c, [['Adheeb got away! 😅', '#573448', 9], ['Score ' + Math.floor(g.score) + '  ·  Best ' + g.best, '#65465b', 7], ['Tap Try again 💗', '#cf4380', 7]], 54, 62);
+  c.restore();
+}
+
+/* ---------------- the Game tab ---------------- */
+SUB['05'] = 'Miyadha chases Adheeb through your favourite places 💗';
+V.quiz = async function () {
+  return `${head('05', 'The Game', 'Miyadha chases Adheeb')}<section class="runner-card"><div class="runner-hud"><span class="miyadha-name">🌸 Miyadha</span><span class="runner-score"><strong id="runnerStage">Ready?</strong> · LIVES <strong id="runnerLives">♥♥♥</strong></span><span class="adheeb-name">🏃 Adheeb</span></div><div class="runner-progress"><span id="runnerProgress"></span></div><canvas id="runnerCanvas" width="320" height="180" aria-label="Miyadha chasing Adheeb through three lanes"></canvas><p class="runner-hint"><b>Swipe</b> ← → to change lane · ↑ jump · ↓ roll<br>Keys: arrows or WASD, Space to jump</p><p class="runner-status" id="runnerStatus">Help Miyadha catch Adheeb! Grab hearts 💗 and mangoes 🥭</p><div class="runner-controls"><button class="alt" id="runnerLeft" aria-label="Move left">◀</button><button class="alt" id="runnerJump">Jump ⤴</button><button class="alt" id="runnerRoll">Roll ⤵</button><button class="alt" id="runnerRight" aria-label="Move right">▶</button></div><div class="runner-controls"><button id="runnerStart">Start 💌</button><button class="alt" id="runnerPause" disabled>Pause</button><button class="alt" id="runnerMute">Sound on</button><button class="alt" id="runnerAgain" hidden>Try again</button></div></section>`;
+};
+const st = document.createElement('style');
+st.textContent = '#runnerCanvas{display:block;width:100%;max-width:640px;height:auto;aspect-ratio:16/9;image-rendering:pixelated;touch-action:none}#runnerLeft,#runnerRight{min-width:64px!important;min-height:48px!important;touch-action:manipulation}#runnerJump,#runnerRoll{min-width:96px!important;min-height:48px!important;touch-action:manipulation}';
+document.head.appendChild(st);
+})();
+</script>\n</body>
+</html> 
