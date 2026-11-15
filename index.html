@@ -709,7 +709,7 @@ document.addEventListener('submit', async e => {
    Collect hearts and mangoes to close the gap. Hit obstacles and she pulls ahead. */
 (() => {
 'use strict';
-const W = 320, H = 180, HY = 44, PZ = .86, LS = 74, N = 12, STEP = 1 / 60;
+const W = 320, H = 420, HY = 68, PZ = .86, LS = 74, N = 12, STEP = 1 / 60;
 const PAL = {H:'#35213e',S:'#f0b391',E:'#291a32',P:'#ff4f91',V:'#8c5fd1',L:'#342940',B:'#ffd16c',D:'#342b43',O:'#5b386a'};
 const MIYA = ['..HHHH..','.HHHHHH.','.HSSSSHH','.HSESSHH','..SSSS..','..PPPP..','.PPPPPP.','..VVVV..','.LL..LL.','BB....BB'];
 const ADHE = ['..DDDD..','.DDDDDD.','.DSSSSDD','.DSESSDD','..SSSS..','..BBBB..','.BBBBBB.','..OOOO..','.LL..LL.','BB....BB'];
@@ -1017,11 +1017,42 @@ function draw(g) {
 /* ---------------- the Game tab ---------------- */
 SUB['05'] = 'Miyadha chases Adheeb through your favourite places 💗';
 V.quiz = async function () {
-  return `${head('05', 'The Game', 'Miyadha chases Adheeb')}<section class="runner-card"><div class="runner-hud"><span class="miyadha-name">🌸 Miyadha</span><span class="runner-score"><strong id="runnerStage">Ready?</strong> · LIVES <strong id="runnerLives">♥♥♥</strong></span><span class="adheeb-name">🏃 Adheeb</span></div><div class="runner-progress"><span id="runnerProgress"></span></div><canvas id="runnerCanvas" width="320" height="180" aria-label="Miyadha chasing Adheeb through three lanes"></canvas><p class="runner-hint"><b>Swipe</b> ← → to change lane · ↑ jump · ↓ roll<br>Keys: arrows or WASD, Space to jump</p><p class="runner-status" id="runnerStatus">Help Miyadha catch Adheeb! Grab hearts 💗 and mangoes 🥭</p><div class="runner-controls"><button class="alt" id="runnerLeft" aria-label="Move left">◀</button><button class="alt" id="runnerJump">Jump ⤴</button><button class="alt" id="runnerRoll">Roll ⤵</button><button class="alt" id="runnerRight" aria-label="Move right">▶</button></div><div class="runner-controls"><button id="runnerStart">Start 💌</button><button class="alt" id="runnerPause" disabled>Pause</button><button class="alt" id="runnerMute">Sound on</button><button class="alt" id="runnerAgain" hidden>Try again</button></div></section>`;
+  return `${head('05', 'The Game', 'Miyadha chases Adheeb')}<section class="runner-card"><div class="runner-hud"><span class="miyadha-name">🌸 Miyadha</span><span class="runner-score"><strong id="runnerStage">Ready?</strong> · LIVES <strong id="runnerLives">♥♥♥</strong></span><span class="adheeb-name">🏃 Adheeb</span></div><div class="runner-progress"><span id="runnerProgress"></span></div><canvas id="runnerCanvas" width="320" height="420" aria-label="Miyadha chasing Adheeb through three lanes"></canvas><p class="runner-hint"><b>Swipe</b> ← → to change lane · ↑ jump · ↓ roll<br>Keys: arrows or WASD, Space to jump</p><p class="runner-status" id="runnerStatus">Help Miyadha catch Adheeb! Grab hearts 💗 and mangoes 🥭</p><div class="runner-controls"><button class="alt" id="runnerLeft" aria-label="Move left">◀</button><button class="alt" id="runnerJump">Jump ⤴</button><button class="alt" id="runnerRoll">Roll ⤵</button><button class="alt" id="runnerRight" aria-label="Move right">▶</button></div><div class="runner-controls"><button id="runnerStart">Start 💌</button><button class="alt" id="runnerPause" disabled>Pause</button><button class="alt" id="runnerMute">Sound on</button><button class="alt" id="runnerAgain" hidden>Try again</button></div></section>`;
 };
 const st = document.createElement('style');
-st.textContent = '#runnerCanvas{display:block;width:100%;max-width:640px;height:auto;aspect-ratio:16/9;image-rendering:pixelated;touch-action:none}#runnerLeft,#runnerRight{min-width:64px!important;min-height:48px!important;touch-action:manipulation}#runnerJump,#runnerRoll{min-width:96px!important;min-height:48px!important;touch-action:manipulation}';
+st.textContent = '#runnerCanvas{display:block;width:100%;max-width:500px;height:auto;aspect-ratio:16/21;image-rendering:pixelated;touch-action:none;margin:0 auto}#runnerLeft,#runnerRight{min-width:64px!important;min-height:48px!important;touch-action:manipulation}#runnerJump,#runnerRoll{min-width:96px!important;min-height:48px!important;touch-action:manipulation}@media(max-width:600px){.runner-card{width:calc(100% + 20px);margin-left:-10px;margin-right:-10px;padding:12px 8px}.runner-card #runnerCanvas{width:min(100%,53.3dvh);max-width:none;max-height:70dvh;aspect-ratio:16/21}.runner-hud{gap:4px;font-size:.7rem}.runner-hint{font-size:.78rem}}';
 document.head.appendChild(st);
 })();
 </script>\n</body>
-</html> 
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
