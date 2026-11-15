@@ -345,8 +345,9 @@ async function upload(file){
   return sb.storage.from('media').getPublicUrl(name).data.publicUrl;
 }
 
-async function saveStoryEdit(id,patch){const next={...(S.storyEdits||{})};next[id]={...(next[id]||{}),...patch};const {error}=await sb.from('settings').upsert({key:'storyEdits',value:next});if(error)throw error;S.storyEdits=next}
-async function savePhotoEdit(id,patch){const next={...(S.photoEdits||{})};next[id]={...(next[id]||{}),...patch};const {error}=await sb.from('settings').upsert({key:'photoEdits',value:next});if(error)throw error;S.photoEdits=next}
+async function saveSetting(key,value){const {data,error}=await sb.from('settings').upsert({key,value}).select('key').single();if(error)throw error;if(!data)throw new Error('Supabase did not confirm the save. Check the signed-in admin ID and database policies.')}
+async function saveStoryEdit(id,patch){const next={...(S.storyEdits||{})};next[id]={...(next[id]||{}),...patch};await saveSetting('storyEdits',next);S.storyEdits=next}
+async function savePhotoEdit(id,patch){const next={...(S.photoEdits||{})};next[id]={...(next[id]||{}),...patch};await saveSetting('photoEdits',next);S.photoEdits=next}
 function showEditor(title,fields,onSave){
   $('#adminEditor')?.remove();
   const host=document.createElement('div');host.id='adminEditor';host.className='admin-editor';host.innerHTML=`<form class="admin-editor-card"><h2>${esc(title)}</h2>${fields.map((f,i)=>`<label>${esc(f.label)}${f.type==='textarea'?`<textarea name="f${i}" ${f.required?'required':''}>${esc(f.value)}</textarea>`:`<input name="f${i}" type="${f.type||'text'}" value="${esc(f.value)}" ${f.required?'required':''}>`}</label>`).join('')}<div class="admin-editor-error" aria-live="polite"></div><div class="admin-editor-actions"><button type="button" class="alt" data-editor-close>Cancel</button><button type="submit">Save changes</button></div></form>`;
@@ -602,7 +603,7 @@ async function render(){
   const h = await V[tab]();
   const errors=Object.entries(S._dbErrors||{});
   const setupNote=admin&&errors.length?`<div class="admin-message"><b>Supabase needs a one-time setup</b>${errors.map(([table,err])=>`<div>${esc(table)}: ${esc(err.message||'table unavailable')}</div>`).join('')}Open <code>outputs/supabase-setup.sql</code>, replace the admin ID placeholder, and run it in Supabase → SQL Editor. Then refresh this page.</div>`:'';
-  app.innerHTML = `${setupNote}<div id="view">${h}</div><p class="small">${admin ? '🔧 Admin mode · <a href="#" data-logout>log out</a>' : 'made with love 💖'}</p>
+  app.innerHTML = `${setupNote}<div id="view">${h}</div><p class="small">${admin ? `🔧 Admin mode · ID ${esc(S._adminId||'unknown')} · <a href="#" data-logout>log out</a>` : 'made with love 💖'}</p>
     <nav>${TABS.map(([k, e, l]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}"><i>${e}</i>${l}</button>`).join('')}</nav>`;
   [...$('#view').children].forEach((c, i) => c.style.setProperty('--i', i));
   document.querySelectorAll('#view .card').forEach((c, i) => c.insertAdjacentHTML('beforeend', dd(['heart','star','bow'][i % 3], ['#ff4f8b','#ffb703','#a56bff'][i % 3], '', 1 + i * .15, 'f corner')));
@@ -667,24 +668,24 @@ document.addEventListener('click', async e => {
     t.querySelectorAll('.tmp').forEach(n => n.remove());
     t.insertAdjacentHTML('beforeend', `<span class="pin tmp" style="left:${f.x.value}%;top:${f.y.value}%">📌</span>`); return;
   }
-  if (d.del && confirm('Delete this?')){ const {error}=await sb.from(d.del).delete().eq('id', d.id);if(error)alert('Could not delete: '+error.message);return render(); }
+  if (d.del && confirm('Delete this?')){ const {data,error}=await sb.from(d.del).delete().eq('id', d.id).select('id').maybeSingle();if(error)alert('Could not delete: '+error.message);else if(!data)alert('Nothing was deleted. Check that the signed-in admin ID matches the database policy.');return render(); }
   if (d.edit){
     const {data:row,error}=await sb.from(d.edit).select('*').eq('id',d.id).single();if(error){alert('Could not open editor: '+error.message);return;}
     const fields=F[d.edit].filter(([k,,ty])=>ty!=='file'&&ty!=='hidden').map(([k,label,ty])=>({key:k,label:label||k,type:ty==='textarea'?'textarea':ty==='date'?'date':ty==='number'?'number':'text',value:row[k]??''}));
-    showEditor('Edit '+d.edit,fields,async values=>{const upd={};fields.forEach((f,i)=>upd[f.key]=f.type==='number'?Number(values[i]):values[i]);const {error}=await sb.from(d.edit).update(upd).eq('id',d.id);if(error)throw error;});return;
+    showEditor('Edit '+d.edit,fields,async values=>{const upd={};fields.forEach((f,i)=>upd[f.key]=f.type==='number'?Number(values[i]):values[i]);const {data,error}=await sb.from(d.edit).update(upd).eq('id',d.id).select('id').maybeSingle();if(error)throw error;if(!data)throw new Error('No row was updated. Check that the signed-in admin ID matches the database policy.');});return;
   }
   if (d.set){
-    showEditor(d.set==='note'?'Edit your note':'Edit her name',[{label:d.set==='note'?'Your message':'Name',type:d.set==='note'?'textarea':'text',value:S[d.set]||''}],async([v])=>{const {error}=await sb.from('settings').upsert({key:d.set,value:v});if(error)throw error;S[d.set]=v;});return;
+    showEditor(d.set==='note'?'Edit your note':'Edit her name',[{label:d.set==='note'?'Your message':'Name',type:d.set==='note'?'textarea':'text',value:S[d.set]||''}],async([v])=>{await saveSetting(d.set,v);S[d.set]=v;});return;
   }
   if (d.logout !== undefined){ e.preventDefault(); await sb.auth.signOut(); location.hash = ''; location.reload(); }
 });
 document.addEventListener('keydown',e=>{if(tab==='quiz'&&e.code==='Escape'){e.preventDefault();window.togglePause()}});
 document.addEventListener('change', async e => {
   if(e.target.dataset.photoFile!==undefined&&e.target.files[0]){try{const url=await upload(e.target.files[0]);await savePhotoEdit(e.target.dataset.photoFile,{url});await render()}catch(x){alert('Could not replace photo: '+x.message)}return;}
-  if(e.target.dataset.memoryPhoto!==undefined&&e.target.files[0]){try{const url=await upload(e.target.files[0]);const {error}=await sb.from('memories').update({url}).eq('id',e.target.dataset.memoryPhoto);if(error)throw error;await render()}catch(x){alert('Could not replace photo: '+x.message)}return;}
+  if(e.target.dataset.memoryPhoto!==undefined&&e.target.files[0]){try{const url=await upload(e.target.files[0]);const {data,error}=await sb.from('memories').update({url}).eq('id',e.target.dataset.memoryPhoto).select('id').maybeSingle();if(error)throw error;if(!data)throw new Error('No row was updated. Check the signed-in admin ID.');await render()}catch(x){alert('Could not replace photo: '+x.message)}return;}
   if(e.target.dataset.storyPhoto!==undefined&&e.target.files[0]){try{const url=await upload(e.target.files[0]);await saveStoryEdit(e.target.dataset.storyPhoto,{photo:url});S._story=e.target.dataset.storyPhoto;await render()}catch(x){alert('Could not upload story photo: '+x.message)}return;}
   if (e.target.dataset.song !== undefined && e.target.files[0]){
-    try { const u = await upload(e.target.files[0]); await sb.from('settings').upsert({ key: 'song', value: u }); S.song = u; alert('Song saved 🎵'); } catch (x) { alert(x.message); }
+    try { const u = await upload(e.target.files[0]); await saveSetting('song',u); S.song = u; alert('Song saved 🎵'); } catch (x) { alert(x.message); }
   }
 });
 document.addEventListener('submit', async e => {
@@ -713,6 +714,7 @@ document.addEventListener('submit', async e => {
     if (email){ const r = await sb.auth.signInWithPassword({ email, password }); if (r.error) alert(r.error.message); session = r.data.session; }
   }
   admin = !!session;
+  S._adminId=session?.user?.id||'';
   admin ? render() : welcome();
 })();
 </script>
@@ -1041,6 +1043,10 @@ document.head.appendChild(st);
 </script>
 </body>
 </html>
+
+
+
+
 
 
 
