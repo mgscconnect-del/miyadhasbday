@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Pacifico&family=Caveat:wght@600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.1.0/dist/tus.min.js"></script>
 <style>
 :root{--pink:#ff4f8b;--pink2:#ff8fb8;--ink:#5a1d3d;--sh:0 6px 0 #ff4f8b30,0 14px 30px #ff4f8b22}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -338,14 +339,41 @@ const rows = async t => {
   if(error){S._dbErrors[t]=error;return []}
   delete S._dbErrors[t]; return data || [];
 };
-async function upload(file){
-  const name = crypto.randomUUID() + '.' + (file.name.split('.').pop() || 'bin');
-  const { error } = await sb.storage.from('media').upload(name, file, { contentType: file.type });
-  if (error) throw error;
+const PROJECT_ID=new URL(SUPABASE_URL).hostname.split('.')[0];
+async function upload(file,onProgress){
+  const ext=(file.name.split('.').pop()||'bin').toLowerCase();
+  const name=crypto.randomUUID()+'.'+ext;
+  if(file.size<=6*1024*1024||!window.tus){
+    const {error}=await sb.storage.from('media').upload(name,file,{contentType:file.type,cacheControl:'31536000'});
+    if(error)throw error; onProgress?.(100);
+  }else{
+    const {data:{session}}=await sb.auth.getSession();
+    const token=session?.access_token||SUPABASE_KEY;
+    await new Promise((res,rej)=>{
+      new tus.Upload(file,{
+        endpoint:`https://${PROJECT_ID}.storage.supabase.co/storage/v1/upload/resumable`,
+        retryDelays:[0,1000,3000,5000,10000],
+        headers:{authorization:`Bearer ${token}`,apikey:SUPABASE_KEY,'x-upsert':'false'},
+        uploadDataDuringCreation:true,
+        removeFingerprintOnSuccess:true,
+        chunkSize:6*1024*1024,
+        metadata:{bucketName:'media',objectName:name,contentType:file.type||'application/octet-stream',cacheControl:'31536000'},
+        onError:rej,
+        onProgress:(a,b)=>onProgress?.(Math.round(a/b*100)),
+        onSuccess:res
+      }).start();
+    });
+  }
   return sb.storage.from('media').getPublicUrl(name).data.publicUrl;
 }
 
-async function saveSetting(key,value){const {data,error}=await sb.from('settings').upsert({key,value}).select('key').single();if(error)throw error;if(!data)throw new Error('Supabase did not confirm the save. Check the signed-in admin ID and database policies.')}
+const JSON_KEYS=['storyEdits','photoEdits'];
+async function saveSetting(key,value){
+  const stored=JSON_KEYS.includes(key)?JSON.stringify(value):value;
+  const {data,error}=await sb.from('settings').upsert({key,value:stored},{onConflict:'key'}).select('key').maybeSingle();
+  if(error)throw error;
+  if(!data)throw new Error('Supabase did not confirm the save. Check the signed-in admin ID and database policies.');
+}
 async function saveStoryEdit(id,patch){const next={...(S.storyEdits||{})};next[id]={...(next[id]||{}),...patch};await saveSetting('storyEdits',next);S.storyEdits=next}
 async function savePhotoEdit(id,patch){const next={...(S.photoEdits||{})};next[id]={...(next[id]||{}),...patch};await saveSetting('photoEdits',next);S.photoEdits=next}
 function showEditor(title,fields,onSave){
@@ -695,7 +723,7 @@ document.addEventListener('submit', async e => {
     const row = {};
     for (const [k, , ty] of F[f.dataset.t]){
       const el = f[k];
-      if (ty === 'file'){ if (el.files[0]) row[k] = await upload(el.files[0]); }
+      if (ty === 'file'){ if (el.files[0]) row[k] = await upload(el.files[0], p => btn.textContent = 'Uploading… ' + p + '%'); }
       else if (el.value !== '') row[k] = ty === 'number' || ty === 'hidden' ? +el.value : el.value;
     }
     const { error } = await sb.from(f.dataset.t).insert(row); if (error) throw error;
@@ -707,7 +735,14 @@ document.addEventListener('submit', async e => {
 (async () => {
   const settingsResult=await sb.from('settings').select('*');
   if(settingsResult.error){S._dbErrors={settings:settingsResult.error};}
-  else settingsResult.data?.forEach(r => S[r.key] = r.value);
+  else settingsResult.data?.forEach(r=>{
+    let v=r.value;
+    if(JSON_KEYS.includes(r.key)){
+      try{ if(typeof v==='string') v=JSON.parse(v); }catch(e){ v={}; }
+      if(!v||typeof v!=='object') v={};
+    }
+    S[r.key]=v;
+  });
   let { data: { session } } = await sb.auth.getSession();
   if (!session && location.hash === '#admin'){
     const email = prompt('Admin email'), password = email && prompt('Password');
@@ -1043,41 +1078,6 @@ document.head.appendChild(st);
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
