@@ -261,7 +261,7 @@ input,textarea{padding:11px;border-radius:14px;border:2px solid #ffc2da;font:inh
 .small{font-size:.85rem;text-align:center;opacity:.75}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-iteration-count:1!important}}
 
-.runner-progress{height:8px;background:#f1cbd9;border-radius:9px;margin:0 6px 9px;overflow:hidden}.runner-progress span{display:block;width:0;height:100%;background:linear-gradient(90deg,#fb5790,#ffb84d);transition:width .15s linear}#runnerCanvas{width:100%;max-width:640px;height:auto;aspect-ratio:16/9;display:block;margin:auto;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;cursor:pointer}#runnerPause,#runnerMute{min-width:74px}
+.runner-progress{height:8px;background:#f1cbd9;border-radius:9px;margin:0 6px 9px;overflow:hidden}.runner-progress span{display:block;width:0;height:100%;background:linear-gradient(90deg,#fb5790,#ffb84d);transition:width .15s linear}#runnerCanvas{width:100%;max-width:640px;height:auto;aspect-ratio:16/21;display:block;margin:auto;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;cursor:pointer}.chapter-copy{white-space:pre-line}#runnerPause,#runnerMute{min-width:74px}
 .story-admin{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:16px 0}.story-upload{display:inline-flex;align-items:center;cursor:pointer}.story-upload{padding:7px 10px;background:#fff;border-radius:14px;color:#7e4561;font-size:.8rem}.story-upload input{display:none}.chapter-photo{margin:16px auto;text-align:center}.chapter-photo img{max-width:100%;max-height:340px;border-radius:14px}.story-photo-caption{font-size:.9rem;color:#98507a;margin-top:6px}.extra-photo{position:relative}.extra-photo button{display:block}.politics-art{min-height:150px;display:flex;justify-content:center;align-items:center;gap:16px;background:linear-gradient(135deg,#ffe6b8,#fad7e8,#d9e9ff);border-radius:18px}.politics-art .ballot{width:42px;height:50px;background:#fff;border:3px solid #c77c9c;border-radius:8px;display:grid;place-items:center;color:#fa5795;font-size:22px;box-shadow:0 5px 0 #dfb0c1}.politics-art .talk-bubble{padding:10px 14px;background:#fff;border-radius:16px;color:#71435d;font-size:.8rem}.politics-hearts{color:#ee4f90}
 </style>
 </head>
@@ -317,7 +317,7 @@ function bday(){
   const M = [[392,.75],[392,.25],[440,1],[392,1],[523,1],[494,2],[392,.75],[392,.25],[440,1],[392,1],[587,1],[523,2],[392,.75],[392,.25],[784,1],[659,1],[523,1],[494,1],[440,1],[698,.75],[698,.25],[659,1],[523,1],[587,1],[523,2]];
   let t = 0; M.forEach(([f, b]) => { snd(f, .55, 'triangle', .16, t); snd(f * 2, .3, 'sine', .04, t); t += b * .42; });
 }
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc = s => String(s ?? '').replace(/\\n|\/n/g, '\n').replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
 const isVid = u => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u || '');
 const bad = "this.replaceWith(Object.assign(document.createElement('div'),{className:'vf',textContent:'This one couldn’t load right now. Try again in a moment.'}))";
 const media = u => !u ? '' : isVid(u) ? `<video class="m" controls playsinline preload="metadata" src="${u}#t=0.1" onerror="${bad}"></video>` : `<img class="m" loading="lazy" src="${u}" onerror="${bad}">`;
@@ -1020,11 +1020,40 @@ V.quiz = async function () {
   return `${head('05', 'The Game', 'Miyadha chases Adheeb')}<section class="runner-card"><div class="runner-hud"><span class="miyadha-name">🌸 Miyadha</span><span class="runner-score"><strong id="runnerStage">Ready?</strong> · LIVES <strong id="runnerLives">♥♥♥</strong></span><span class="adheeb-name">🏃 Adheeb</span></div><div class="runner-progress"><span id="runnerProgress"></span></div><canvas id="runnerCanvas" width="320" height="420" aria-label="Miyadha chasing Adheeb through three lanes"></canvas><p class="runner-hint"><b>Swipe</b> ← → to change lane · ↑ jump · ↓ roll<br>Keys: arrows or WASD, Space to jump</p><p class="runner-status" id="runnerStatus">Help Miyadha catch Adheeb! Grab hearts 💗 and mangoes 🥭</p><div class="runner-controls"><button class="alt" id="runnerLeft" aria-label="Move left">◀</button><button class="alt" id="runnerJump">Jump ⤴</button><button class="alt" id="runnerRoll">Roll ⤵</button><button class="alt" id="runnerRight" aria-label="Move right">▶</button></div><div class="runner-controls"><button id="runnerStart">Start 💌</button><button class="alt" id="runnerPause" disabled>Pause</button><button class="alt" id="runnerMute">Sound on</button><button class="alt" id="runnerAgain" hidden>Try again</button></div></section>`;
 };
 const st = document.createElement('style');
-st.textContent = '#runnerCanvas{display:block;width:100%;max-width:500px;height:auto;aspect-ratio:16/21;image-rendering:pixelated;touch-action:none;margin:0 auto}#runnerLeft,#runnerRight{min-width:64px!important;min-height:48px!important;touch-action:manipulation}#runnerJump,#runnerRoll{min-width:96px!important;min-height:48px!important;touch-action:manipulation}@media(max-width:600px){.runner-card{width:calc(100% + 20px);margin-left:-10px;margin-right:-10px;padding:12px 8px}.runner-card #runnerCanvas{width:min(100%,53.3dvh);max-width:none;max-height:70dvh;aspect-ratio:16/21}.runner-hud{gap:4px;font-size:.7rem}.runner-hint{font-size:.78rem}}';
+st.textContent = '#runnerCanvas{display:block;width:100%;max-width:500px;height:auto;aspect-ratio:16/21;image-rendering:pixelated;touch-action:none;margin:0 auto}#runnerLeft,#runnerRight{min-width:64px!important;min-height:48px!important;touch-action:manipulation}#runnerJump,#runnerRoll{min-width:96px!important;min-height:48px!important;touch-action:manipulation}@media(max-width:600px){.runner-card{width:calc(100% + 20px);margin-left:-10px;margin-right:-10px;padding:12px 8px}.runner-card #runnerCanvas{width:min(100%,53.3svh);max-width:none;height:auto;max-height:none;aspect-ratio:16/21}.runner-hud{gap:4px;font-size:.7rem}.runner-hint{font-size:.78rem}}';
 document.head.appendChild(st);
 })();
-</script>\n</body>
+</script>
+</body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
