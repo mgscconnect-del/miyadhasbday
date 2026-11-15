@@ -263,6 +263,7 @@ input,textarea{padding:11px;border-radius:14px;border:2px solid #ffc2da;font:inh
 
 .runner-progress{height:8px;background:#f1cbd9;border-radius:9px;margin:0 6px 9px;overflow:hidden}.runner-progress span{display:block;width:0;height:100%;background:linear-gradient(90deg,#fb5790,#ffb84d);transition:width .15s linear}#runnerCanvas{width:100%;max-width:640px;height:auto;aspect-ratio:16/21;display:block;margin:auto;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;cursor:pointer}.chapter-copy{white-space:pre-line}#runnerPause,#runnerMute{min-width:74px}
 .story-admin{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:16px 0}.story-upload{display:inline-flex;align-items:center;cursor:pointer}.story-upload{padding:7px 10px;background:#fff;border-radius:14px;color:#7e4561;font-size:.8rem}.story-upload input{display:none}.chapter-photo{margin:16px auto;text-align:center}.chapter-photo img{max-width:100%;max-height:340px;border-radius:14px}.story-photo-caption{font-size:.9rem;color:#98507a;margin-top:6px}.extra-photo{position:relative}.extra-photo button{display:block}.politics-art{min-height:150px;display:flex;justify-content:center;align-items:center;gap:16px;background:linear-gradient(135deg,#ffe6b8,#fad7e8,#d9e9ff);border-radius:18px}.politics-art .ballot{width:42px;height:50px;background:#fff;border:3px solid #c77c9c;border-radius:8px;display:grid;place-items:center;color:#fa5795;font-size:22px;box-shadow:0 5px 0 #dfb0c1}.politics-art .talk-bubble{padding:10px 14px;background:#fff;border-radius:16px;color:#71435d;font-size:.8rem}.politics-hearts{color:#ee4f90}
+.add textarea{min-height:150px;resize:vertical;line-height:1.5}.admin-message{padding:14px 16px;border:2px solid #ffcf76;border-radius:18px;background:#fff7df;color:#704d2b;margin:14px 0;line-height:1.5}.admin-message b{display:block;margin-bottom:4px}.admin-editor{position:fixed;inset:0;z-index:1000;background:#3a173bd9;display:grid;place-items:center;padding:16px;overflow:auto}.admin-editor-card{width:min(100%,680px);max-height:min(92dvh,900px);overflow:auto;background:#fffaf3;border:4px solid white;border-radius:24px;padding:20px;box-shadow:0 12px 0 #b66a96,0 25px 60px #160b1b70}.admin-editor-card h2{margin:0 0 14px;color:#9b426c}.admin-editor-card label{display:grid;gap:6px;margin:12px 0;font-weight:600;color:#70415b}.admin-editor-card input,.admin-editor-card textarea{font:inherit;width:100%;padding:12px;border:2px solid #ffc2da;border-radius:13px;color:#503347;background:#fff}.admin-editor-card textarea{min-height:42vh;resize:vertical;line-height:1.55}.admin-editor-actions{display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:-20px;background:#fffaf3;padding:12px 0 0}.admin-editor-error{color:#a12e50;min-height:1.4em}
 </style>
 </head>
 <body>
@@ -324,14 +325,19 @@ const media = u => !u ? '' : isVid(u) ? `<video class="m" controls playsinline p
 const wave = s => [...s].map((c, i) => `<span style="--i:${i}">${c === ' ' ? '&nbsp;' : esc(c)}</span>`).join('');
 
 const F = {
-  memories: [['title','Title'],['caption','Caption'],['date','Date','date'],['url','Photo / video','file']],
-  reasons:  [['text','Reason']],
+  memories: [['title','Title'],['caption','Story / caption','textarea'],['date','Date','date'],['url','Photo / video','file']],
+  reasons:  [['text','Reason','textarea']],
   quiz:     [['question','Question'],['options','Options separated by |  e.g. Paris | Goa | Kochi'],['answer','Correct option number (1,2,3…)','number'],['right_msg','Reply when right'],['wrong_msg','Reply when wrong (tease her!)']],
-  places:   [['name','Place name'],['story','Story'],['url','Photo','file'],['x','','hidden'],['y','','hidden']],
+  places:   [['name','Place name'],['story','Place description','textarea'],['url','Photo','file'],['x','','hidden'],['y','','hidden']],
   videos:   [['title','Title'],['url','Video','file']]
 };
 const TABS = [['note','💌','Note'],['gallery','🖼️','Photos'],['memories','🌷','Story'],['reasons','🫙','Jar'],['quiz','🏃','Game'],['places','🗺️','Map'],['videos','🎬','Video']];
-const rows = async t => (await sb.from(t).select('*').order('created_at')).data || [];
+const rows = async t => {
+  const {data,error} = await sb.from(t).select('*').order('created_at');
+  S._dbErrors = S._dbErrors || {};
+  if(error){S._dbErrors[t]=error;return []}
+  delete S._dbErrors[t]; return data || [];
+};
 async function upload(file){
   const name = crypto.randomUUID() + '.' + (file.name.split('.').pop() || 'bin');
   const { error } = await sb.storage.from('media').upload(name, file, { contentType: file.type });
@@ -341,6 +347,11 @@ async function upload(file){
 
 async function saveStoryEdit(id,patch){const next={...(S.storyEdits||{})};next[id]={...(next[id]||{}),...patch};const {error}=await sb.from('settings').upsert({key:'storyEdits',value:next});if(error)throw error;S.storyEdits=next}
 async function savePhotoEdit(id,patch){const next={...(S.photoEdits||{})};next[id]={...(next[id]||{}),...patch};const {error}=await sb.from('settings').upsert({key:'photoEdits',value:next});if(error)throw error;S.photoEdits=next}
+function showEditor(title,fields,onSave){
+  $('#adminEditor')?.remove();
+  const host=document.createElement('div');host.id='adminEditor';host.className='admin-editor';host.innerHTML=`<form class="admin-editor-card"><h2>${esc(title)}</h2>${fields.map((f,i)=>`<label>${esc(f.label)}${f.type==='textarea'?`<textarea name="f${i}" ${f.required?'required':''}>${esc(f.value)}</textarea>`:`<input name="f${i}" type="${f.type||'text'}" value="${esc(f.value)}" ${f.required?'required':''}>`}</label>`).join('')}<div class="admin-editor-error" aria-live="polite"></div><div class="admin-editor-actions"><button type="button" class="alt" data-editor-close>Cancel</button><button type="submit">Save changes</button></div></form>`;
+  document.body.appendChild(host);host.addEventListener('click',e=>{if(e.target===host||e.target.closest('[data-editor-close]'))host.remove()});host.querySelector('form').addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('[type=submit]'),values=fields.map((_,i)=>form.elements['f'+i].value);button.disabled=true;button.textContent='Saving…';try{await onSave(values);host.remove();await render()}catch(err){const box=form.querySelector('.admin-editor-error');box.textContent='Could not save: '+(err.message||'Please check the Supabase setup.');button.disabled=false;button.textContent='Save changes'}});
+}
 const DD = { heart:'M50 88C8 58 4 26 28 16c12-5 22 4 22 12 0-8 10-17 22-12 24 10 20 42-22 72z', star:'M50 6l11 33h35L68 59l11 33-29-20-29 20 11-33L4 39h35z', bow:'M50 50C30 20 5 25 8 50C10 75 35 75 50 50C65 75 90 75 92 50C95 25 70 20 50 50zM44 44h12v12H44z', spark:'M50 4Q56 44 96 50Q56 56 50 96Q44 56 4 50Q44 44 50 4z' };
 const ORD = [4,2,7,0,5,3,6,1];
 const AT = [
@@ -408,6 +419,7 @@ function addForm(t){
   return admin ? `<form class="add" data-t="${t}"><b>➕ Add new</b>` + F[t].map(([k, l, ty]) =>
     ty === 'file' ? `<input name="${k}" type="file" accept="image/*,video/*">` :
     ty === 'hidden' ? `<input name="${k}" type="hidden">` :
+    ty === 'textarea' ? `<textarea name="${k}" placeholder="${esc(l)}" aria-label="${esc(l)}"></textarea>` :
     `<input name="${k}" placeholder="${esc(l)}" type="${ty || 'text'}">`).join('') +
     (t === 'places' ? '<small>👆 Tap the map above to choose where the pin goes, then save.</small>' : '') + `<button>Save</button></form>` : '';
 }
@@ -588,7 +600,9 @@ async function render(){
   if (tab !== 'quiz' && RG?.raf){ cancelAnimationFrame(RG.raf); clearInterval(MUSIC_TIMER); RG = null; }
   $('#sheet')?.remove();
   const h = await V[tab]();
-  app.innerHTML = `<div id="view">${h}</div><p class="small">${admin ? '🔧 Admin mode · <a href="#" data-logout>log out</a>' : 'made with love 💖'}</p>
+  const errors=Object.entries(S._dbErrors||{});
+  const setupNote=admin&&errors.length?`<div class="admin-message"><b>Supabase needs a one-time setup</b>${errors.map(([table,err])=>`<div>${esc(table)}: ${esc(err.message||'table unavailable')}</div>`).join('')}Open <code>outputs/supabase-setup.sql</code>, replace the admin ID placeholder, and run it in Supabase → SQL Editor. Then refresh this page.</div>`:'';
+  app.innerHTML = `${setupNote}<div id="view">${h}</div><p class="small">${admin ? '🔧 Admin mode · <a href="#" data-logout>log out</a>' : 'made with love 💖'}</p>
     <nav>${TABS.map(([k, e, l]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}"><i>${e}</i>${l}</button>`).join('')}</nav>`;
   [...$('#view').children].forEach((c, i) => c.style.setProperty('--i', i));
   document.querySelectorAll('#view .card').forEach((c, i) => c.insertAdjacentHTML('beforeend', dd(['heart','star','bow'][i % 3], ['#ff4f8b','#ffb703','#a56bff'][i % 3], '', 1 + i * .15, 'f corner')));
@@ -612,9 +626,9 @@ const cake = '<svg class="cakesvg" viewBox="0 0 240 240" role="img" aria-label="
 document.addEventListener('click', async e => {
   const t = e.target.closest('button,a,div.map,[data-lb],[data-egg],#lb,#jarE,canvas#runnerCanvas'); if (!t) return;
   const d = t.dataset;
-  if(d.storyEdit){const ar=document.querySelector('.chapter'),title=prompt('Story title:',ar?.querySelector('.chapter-title')?.textContent||''),text=prompt('Story text:',ar?.querySelector('.chapter-copy')?.textContent||'');if(title!==null&&text!==null){try{await saveStoryEdit(d.storyEdit,{title,text});render()}catch(x){alert('Could not save story: '+x.message)}}return;}
-  if(d.photoCaption!==undefined){const fig=t.closest('figure'),caption=prompt('Photo caption:',fig?.querySelector('figcaption b')?.textContent||'');if(caption!==null){try{await savePhotoEdit(d.photoCaption,{caption});await render()}catch(x){alert('Could not save caption: '+x.message)}}return;}
-  if(d.storyCaption){const ar=document.querySelector('.chapter'),caption=prompt('Photo caption:',ar?.querySelector('.story-photo-caption')?.textContent||'');if(caption!==null){try{await saveStoryEdit(d.storyCaption,{photoCaption:caption});render()}catch(x){alert('Could not save caption: '+x.message)}}return;}
+  if(d.storyEdit){const ar=document.querySelector('.chapter');showEditor('Edit this story',[{label:'Story title',value:ar?.querySelector('.chapter-title')?.textContent||'',required:true},{label:'Story',type:'textarea',value:ar?.querySelector('.chapter-copy')?.textContent||'',required:true}],async([title,text])=>saveStoryEdit(d.storyEdit,{title,text}));return;}
+  if(d.photoCaption!==undefined){const fig=t.closest('figure');showEditor('Edit photo caption',[{label:'Caption',type:'textarea',value:fig?.querySelector('figcaption b')?.textContent||''}],async([caption])=>savePhotoEdit(d.photoCaption,{caption}));return;}
+  if(d.storyCaption){const ar=document.querySelector('.chapter');showEditor('Edit photo caption',[{label:'Caption',type:'textarea',value:ar?.querySelector('.story-photo-caption')?.textContent||''}],async([caption])=>saveStoryEdit(d.storyCaption,{photoCaption:caption}));return;}
   if (t.id === 'runnerStart'){ window.beginRunner(); return; }
   if (t.id === 'runnerAgain'){ window.retryStage(); return; }
     if (t.id === 'runnerPause'){ window.togglePause();t.textContent=RG?.state==='paused'?'Resume':'Pause';return; }
@@ -653,15 +667,14 @@ document.addEventListener('click', async e => {
     t.querySelectorAll('.tmp').forEach(n => n.remove());
     t.insertAdjacentHTML('beforeend', `<span class="pin tmp" style="left:${f.x.value}%;top:${f.y.value}%">📌</span>`); return;
   }
-  if (d.del && confirm('Delete this?')){ await sb.from(d.del).delete().eq('id', d.id); return render(); }
+  if (d.del && confirm('Delete this?')){ const {error}=await sb.from(d.del).delete().eq('id', d.id);if(error)alert('Could not delete: '+error.message);return render(); }
   if (d.edit){
-    const row = (await sb.from(d.edit).select('*').eq('id', d.id).single()).data, upd = {};
-    for (const [k, l, ty] of F[d.edit]){ if (ty === 'file' || ty === 'hidden') continue; const v = prompt(l || k, row[k] ?? ''); if (v !== null) upd[k] = ty === 'number' ? +v : v; }
-    await sb.from(d.edit).update(upd).eq('id', d.id); return render();
+    const {data:row,error}=await sb.from(d.edit).select('*').eq('id',d.id).single();if(error){alert('Could not open editor: '+error.message);return;}
+    const fields=F[d.edit].filter(([k,,ty])=>ty!=='file'&&ty!=='hidden').map(([k,label,ty])=>({key:k,label:label||k,type:ty==='textarea'?'textarea':ty==='date'?'date':ty==='number'?'number':'text',value:row[k]??''}));
+    showEditor('Edit '+d.edit,fields,async values=>{const upd={};fields.forEach((f,i)=>upd[f.key]=f.type==='number'?Number(values[i]):values[i]);const {error}=await sb.from(d.edit).update(upd).eq('id',d.id);if(error)throw error;});return;
   }
   if (d.set){
-    const v = prompt(d.set === 'note' ? 'Your message to her:' : 'Her name:', S[d.set] || '');
-    if (v !== null){ await sb.from('settings').upsert({ key: d.set, value: v }); S[d.set] = v; render(); } return;
+    showEditor(d.set==='note'?'Edit your note':'Edit her name',[{label:d.set==='note'?'Your message':'Name',type:d.set==='note'?'textarea':'text',value:S[d.set]||''}],async([v])=>{const {error}=await sb.from('settings').upsert({key:d.set,value:v});if(error)throw error;S[d.set]=v;});return;
   }
   if (d.logout !== undefined){ e.preventDefault(); await sb.auth.signOut(); location.hash = ''; location.reload(); }
 });
@@ -691,7 +704,9 @@ document.addEventListener('submit', async e => {
 
 /* ---------- Boot ---------- */
 (async () => {
-  (await sb.from('settings').select('*')).data?.forEach(r => S[r.key] = r.value);
+  const settingsResult=await sb.from('settings').select('*');
+  if(settingsResult.error){S._dbErrors={settings:settingsResult.error};}
+  else settingsResult.data?.forEach(r => S[r.key] = r.value);
   let { data: { session } } = await sb.auth.getSession();
   if (!session && location.hash === '#admin'){
     const email = prompt('Admin email'), password = email && prompt('Password');
@@ -1026,29 +1041,6 @@ document.head.appendChild(st);
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
