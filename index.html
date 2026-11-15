@@ -462,7 +462,7 @@ const V = {
   },
   async note(){
     const n = S.note || 'Write your heartfelt message here (log in as admin and tap Edit).';
-    return `${head('01', 'The Note', 'A note for you')}<div class="card"><div class="seal">♥</div><figure class="pol" style="--r:-3deg;max-width:230px;margin:6px auto 16px"><img src="${PH[4]}"><figcaption><b>${CAP[4]}</b></figcaption></figure><div class="dear">Dear ${esc(S.name || 'you')},</div><div class="letter">${esc(n)}</div>
+    return `${head('01', 'The Note', 'A note for you')}<div class="card"><div class="seal">♥</div><figure class="pol" style="--r:-3deg;max-width:230px;margin:6px auto 16px"><img src="${PH[4]}"><figcaption><b>My ponna 🧸</b></figcaption></figure><div class="dear">Dear ${esc(S.name || 'you')},</div><div class="letter">${esc(n)}</div>
     ${admin ? `<p><button class="alt" data-set="note">✏️ Edit note</button> <button class="alt" data-set="name">Her name</button> <label class="alt" style="padding:10px 16px;border-radius:20px;background:#fff;display:inline-block">🎵 Song <input type="file" accept="audio/*" data-song hidden></label></p>` : ''}</div>`;
   },
   async memories(){
